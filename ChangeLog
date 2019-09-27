@@ -1,0 +1,24 @@
+# created with git log --stat=76 -M -C -500|fmt -sct -w80
+
+commit 264b9832b39da311c9fd230b621be1566cfeed10
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Fri Sep 27 14:20:17 2019 -0600
+
+    Initial commit
+
+ .gitignore      |  44 +++++++++++
+ Makefile.am     |  84 ++++++++++++++++++++
+ README.md.in    |  81 +++++++++++++++++++
+ RELEASE.md      |  19 +++++
+ TODO            |  11 +++
+ autogen.sh      |  40 ++++++++++
+ configure.ac    | 219 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ configure.sh    |  40 ++++++++++
+ dist.sh         |   9 +++
+ gennews.sh      |  50 ++++++++++++
+ man/Makefile.am |  39 ++++++++++
+ man/pacana.pod  | 106 +++++++++++++++++++++++++
+ rebuild.sh      |  11 +++
+ src/Makefile.am |  16 ++++
+ src/pacana.c    |   0
+ 15 files changed, 769 insertions(+)
