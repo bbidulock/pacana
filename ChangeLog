@@ -1,5 +1,23 @@
 # created with git log --stat=76 -M -C -500|fmt -sct -w80
 
+commit 57a5b8545b2ea0268c3061033db0e72c1114131e
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Fri Sep 27 14:44:09 2019 -0600
+
+    add release files
+
+ AUTHORS         |   3 +
+ COPYING         | 674 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ ChangeLog       |  24 ++
+ Makefile.am     |   2 +-
+ NEWS            |  10 +
+ README.md       |  81 +++++++
+ THANKS          |   5 +
+ configure.ac    |   6 +-
+ src/Makefile.am |   2 +-
+ src/pacana.c    |   5 +
+ 10 files changed, 807 insertions(+), 5 deletions(-)
+
 commit 264b9832b39da311c9fd230b621be1566cfeed10
 Author: Brian Bidulock <bidulock@openss7.org>
 Date:   Fri Sep 27 14:20:17 2019 -0600

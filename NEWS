@@ -5,6 +5,7 @@ Release pacana-0.9 released 2019-09-27
 
 git shortlog -e -n -w80,6,8 0.9
 
-Brian Bidulock <bidulock@openss7.org> (1):
+Brian Bidulock <bidulock@openss7.org> (2):
       Initial commit
+      add release files
 
