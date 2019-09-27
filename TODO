@@ -1,0 +1,11 @@
+pacana -- TODO file.  2016-06-22
+
+This is the todo list for pacana:
+
+* [ ] Complete documentation (manual page).
+* [ ] Provide a mechanism to track shadowed packages.
+* [ ] Provide a mechanism to track -git development packages.
+* [ ] Warn when a custom repository package shadows an official
+      repository package.
+
+// vim: set ft=asciidoc tw=72 nocin nosi fo+=tcqlorn spell:
