@@ -6,7 +6,10 @@ pacana - an Arch Linux pacman repository analyzer
 
 =head1 SYNOPSIS
 
-B< pacana> [I<OPTIONS>]
+B< pacana> [B<-A>,B<--analyze>] [I<OPTIONS>]
+ B<pacana> {B<-h>,B<--help>} [I<OPTIONS>]
+ B<pacana> {B<-V>,B<--version>}
+ B<pacana> {B<-C>,B<--copying>}
 
 =head1 DESCRIPTION
 
@@ -33,6 +36,10 @@ Only one command option can be specified.
 
 =over
 
+=item [B<-A>, B<--analyze>]
+
+Analyze pacman local and sync repositories.
+
 =item B<-h>, B<--help>
 
 Prints usage information to standard output and exits.
@@ -44,6 +51,56 @@ Prints detailed version information and exits.
 =item B<-C>, B<--copying>
 
 Prints detailed copying permissions and exits.
+
+=back
+
+=head2 ANALYSIS OPTIONS
+
+The following are analysis options.  These options affect the analysis
+performed when the B<--analyze> command is specified.
+
+=over
+
+=item B<-w>, B<--what> I<WHAT>
+
+Specifies what analyses to perform.  The following analyses can be
+specified:
+
+=over
+
+=item C<all>
+
+Perform all available analyses.  This is the default.
+
+=item C<shadow>
+
+Check whether packages in a local or sync database of higher priority
+masks a package of the same name in a lower priority database.  Also
+checks whether the masking package is of an older version than the
+package that it masks.
+
+=item C<provides>
+
+Check whether packages in a local or sync database of higher priority
+provide (and conflict with) a package contained in a lower priority
+database, and whether the package is of an older version than the
+package that it masks.
+
+=item C<alternate>
+
+Check whether packages in a local or sync database provide a name
+(virtual or real package name) that is also provided by a package in
+another (or the same) database.
+
+=item C<outdated>
+
+=item C<vcscheck>
+
+Checks whether development packages in a sync database provide (and
+conflict with) a package contained in a lower priority database, which
+is of older version than the package that it masks.
+
+=back
 
 =back
 
@@ -70,6 +127,88 @@ level is 0.
 =head1 BEHAVIOUR
 
 B<pacana> exhibits the following behaviour:
+
+=head2 ANALYSES
+
+The following analyses may be performed:
+
+=over
+
+=item C<shadow>
+
+Check whether packages in a local or sync database of higher priority
+masks a package of the same name in a lower priority database.  Also
+checks whether the masking package is of an older version than the
+package that it masks.
+
+This is useful for detecting custom repository packages that have the
+same name as an official Arch Linux repository package.  Note that these
+packages cannot originate on the AUR (Arch Linux User Repository)
+because AUR packages are forbidden from having the same name as an
+official repository package.
+
+For example, if I rebuild the F<bind> package to not require C<python>,
+but instead make it optional, and then place it in a custom repository
+of highest priority, it will mask the F<bind> package from the official
+repository.  I will want to know when the official repository F<bind>
+package is newer than mine so that I may recompile it without the
+C<python> requirement.
+
+This check identifies each time that a package from a higher priority
+local or sync database masks a package of a lower database, and warns
+when the version from masked database differs from the masking database.
+This information is generated whether or not the packages in question
+are installed on the querying system.
+
+=item C<alternate>
+
+Check whether packages in a local or sync database provide a name
+(virtual or real package name) that is also provided by a package in
+another (or the same) database.  If the provided name also has a
+version, checks whether each of the alternate packages are at the same
+version.
+
+This is useful for detecting groups of packages which are alternates to
+each other, whether inclusive or exclusive depends on whether the
+packages also conflict with each other.  It also detects whether one of
+the alternates is out of date when compared to the other alternates.
+
+=item C<provides>
+
+Check whether packages in a local or sync database of higher priority
+provide (and conflict with) a package contained in a lower priority
+database, and whether the package is of an older version than the
+package that it masks.
+
+This is helpful for detecting AUR-built packages in a custom repository
+that provide an official repository package that has become out of date
+with the package that it provides.
+
+For example, the AUR package F<seamonkey-gtk2> with version I<2.49.4-4>
+provides the same version of the F<seamonkey> package, but with a GTK+
+interface.  The F<seamonkey-gtk2> package is in a custom repository (or
+is a foreign package) and the F<seamonkey> package is in B<community>.
+When F<seamonkey> hits version I<2.49.5-1> while F<seamonkey-gtk2> is
+still at version I<2.49.4-4>, it indicates that the F<seamonkey-gtk2>
+package needs to be updated.
+
+=item C<vcscheck>
+
+Checks whether development packages in a sync database provide (and
+conflict with) a package contained in a lower priority database, which
+is of older version than the package that it masks.
+
+VCS packages are determined by detecting a B<->I<VCS> suffix on the
+package name as well as a C<makedepends> that requires the VCS package
+at build time.  If the package then provides and conflicts with another
+package without the VCS suffix, then a VCS development package has been
+detected.  If the version of the VCS package is less recent than the
+non-VCS package, a warning is issued that the VCS package needs
+updating (regardless of whether the package is installed).  If the VCS
+package is installed on the current system, a warning is issued that a
+VCS package is installed.
+
+=back
 
 =head1 ENVIRONMENT
 
