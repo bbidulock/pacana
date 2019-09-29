@@ -178,6 +178,11 @@ Options defaults = {
 	.command = CommandDefault,
 };
 
+struct dbhash {
+	alpm_db_t *db;
+	GHashTable *hash;
+};
+
 /** @} */
 
 /** @section Analyze
@@ -208,7 +213,7 @@ get_database_names(void)
 				buf[l] = '\0';
 				if (strcmp(buf + 1, "options")) {
 					list = alpm_list_add(list, strdup(buf + 1));
-					OPRINTF(1, "Added ALPM database: %s\n", buf + 1);
+					DPRINTF(1, "Added ALPM database: %s\n", buf + 1);
 				}
 			}
 		}
@@ -220,35 +225,40 @@ get_database_names(void)
 }
 
 static void
+destroy_dbhash(gpointer data)
+{
+	struct dbhash *dbhash = data;
+
+	if (dbhash->hash)
+		g_hash_table_destroy(dbhash->hash);
+	dbhash->db = NULL;
+	dbhash->hash = NULL;
+	free(dbhash);
+}
+
+static void
 pac_analyze(void)
 {
 
 	const char *version = alpm_version();
-	OPRINTF(1, "ALPM version: %s\n", version);
+
+	DPRINTF(1, "ALPM version: %s\n", version);
 
 	int caps = alpm_capabilities();
+
 	if (caps & ALPM_CAPABILITY_NLS)
-		OPRINTF(1, "ALPM capability NLS\n");
+		DPRINTF(1, "ALPM capability NLS\n");
 	if (caps & ALPM_CAPABILITY_DOWNLOADER)
-		OPRINTF(1, "ALPM capability DOWNLOADER\n");
+		DPRINTF(1, "ALPM capability DOWNLOADER\n");
 	if (caps & ALPM_CAPABILITY_SIGNATURES)
-		OPRINTF(1, "ALPM capability SIGNATURES\n");
+		DPRINTF(1, "ALPM capability SIGNATURES\n");
 
 	alpm_errno_t error = 0;
 	alpm_handle_t *handle = alpm_initialize("/", "/var/lib/pacman/", &error);
+
 	if (!handle || error != 0) {
 		EPRINTF("Could not initialize ALPM: %s\n", alpm_strerror(error));
 		exit(EXIT_FAILURE);
-	}
-	alpm_db_t *local = alpm_get_localdb(handle);
-	{
-		OPRINTF(1, "ALPM database: %s\n", alpm_db_get_name(local));
-		alpm_list_t *pkgs = alpm_db_get_pkgcache(local);
-		alpm_list_t *p;
-		for (p = pkgs; p; p = alpm_list_next(p)) {
-			alpm_pkg_t *pkg = p->data;
-			OPRINTF(1, "ALPM package: %s/%s\n", alpm_db_get_name(local), alpm_pkg_get_name(pkg));
-		}
 	}
 	alpm_list_t *list;
 	alpm_list_t *d;
@@ -256,21 +266,82 @@ pac_analyze(void)
 	list = get_database_names();
 	for (d = list; d; d = alpm_list_next(d)) {
 		const char *name = d->data;
-		alpm_register_syncdb(handle, name, ALPM_SIG_DATABASE_OPTIONAL);
-		OPRINTF(1, "ALPM database: %s\n", name);
-	}
 
-	list = alpm_get_syncdbs(handle);
-	for (d = list; d; d = alpm_list_next(d)) {
-		alpm_db_t *db = d->data;
-		OPRINTF(1, "ALPM database: %s\n", alpm_db_get_name(db));
-		alpm_list_t *pkgs = alpm_db_get_pkgcache(db);
+		alpm_register_syncdb(handle, name, ALPM_SIG_DATABASE_OPTIONAL);
+		DPRINTF(1, "ALPM database: %s\n", name);
+	}
+	GSList *slist = NULL;
+	struct dbhash *dbhash;
+
+	dbhash = calloc(1, sizeof(*dbhash));
+	dbhash->db = alpm_get_localdb(handle);
+	dbhash->hash = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);
+	slist = g_slist_append(slist, dbhash);
+	{
+		size_t count = 0;
+
+		OPRINTF(1, "ALPM database: %s\n", alpm_db_get_name(dbhash->db));
+		alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
 		alpm_list_t *p;
+
 		for (p = pkgs; p; p = alpm_list_next(p)) {
 			alpm_pkg_t *pkg = p->data;
-			OPRINTF(1, "ALPM package: %s/%s\n", alpm_db_get_name(db), alpm_pkg_get_name(pkg));
+			char *name = strdup(alpm_pkg_get_name(pkg));
+
+			OPRINTF(1, "ALPM package: %s/%s\n", alpm_db_get_name(dbhash->db), name);
+			g_hash_table_insert(dbhash->hash, name, pkg);
+			count++;
+		}
+		OPRINTF(1, "ALPM database: %s (%zd packages)\n", alpm_db_get_name(dbhash->db), count);
+	}
+	list = alpm_get_syncdbs(handle);
+	for (d = list; d; d = alpm_list_next(d)) {
+		dbhash = calloc(1, sizeof(*dbhash));
+		dbhash->db = d->data;
+		dbhash->hash = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);
+		slist = g_slist_append(slist, dbhash);
+		{
+			size_t count = 0;
+
+			OPRINTF(1, "ALPM database: %s\n", alpm_db_get_name(dbhash->db));
+			alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
+			alpm_list_t *p;
+
+			for (p = pkgs; p; p = alpm_list_next(p)) {
+				alpm_pkg_t *pkg = p->data;
+				char *name = strdup(alpm_pkg_get_name(pkg));
+
+				OPRINTF(1, "ALPM package: %s/%s\n", alpm_db_get_name(dbhash->db), name);
+				g_hash_table_insert(dbhash->hash, name, pkg);
+				count++;
+			}
+			OPRINTF(1, "ALPM database: %s (%zd packages)\n", alpm_db_get_name(dbhash->db), count);
 		}
 	}
+
+
+	GSList *s;
+
+	/* skip local database */
+	for (s = slist->next; s; s = s->next) {
+		dbhash = s->data;
+		alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
+		alpm_list_t *p;
+		for (p = pkgs; p; p = alpm_list_next(p)) {
+#if 0
+			alpm_pkg_t *pkg = p->data;
+			const char *name = alpm_pkg_get_name(pkg);
+			const char *version = alpm_pkg_get_version(pkg);
+			alpm_list_t *makedepends = alpm_pkg_get_makedepends(pkg);
+			alpm_list_t *conflicts = alpm_pkg_get_conflicts(pkg);
+			alpm_list_t *provides = alpm_pkg_get_provides(pkg);
+			alpm_list_t *replaces = alpm_pkg_get_replaces(pkg);
+#endif
+		}
+	}
+	/* DO MORE! */
+
+	g_slist_free_full(slist, destroy_dbhash);
 	alpm_unregister_all_syncdbs(handle);
 }
 
