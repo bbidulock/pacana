@@ -86,6 +86,7 @@
 #include <wordexp.h>
 #include <execinfo.h>
 
+#include <alpm.h>
 #include <glib.h>
 
 /** @} */
@@ -185,6 +186,68 @@ Options defaults = {
 static void
 pac_analyze(void)
 {
+
+	if (options.output > 1) {
+		const char *version = alpm_version();
+		fprintf(stdout, "ALPM version: %s\n", version);
+	}
+	if (options.output > 1) {
+		int caps = alpm_capabilities();
+		if (caps & ALPM_CAPABILITY_NLS)
+			fprintf(stdout, "ALPM capability NLS\n");
+		if (caps & ALPM_CAPABILITY_DOWNLOADER)
+			fprintf(stdout, "ALPM capability DOWNLOADER\n");
+		if (caps & ALPM_CAPABILITY_SIGNATURES)
+			fprintf(stdout, "ALPM capability SIGNATURES\n");
+	}
+	alpm_errno_t error = 0;
+	alpm_handle_t *handle = alpm_initialize("/", "/var/lib/pacman/", &error);
+	if (!handle || error != 0) {
+		fprintf(stderr, "Could not initialize ALPM: %s\n", alpm_strerror(error));
+		exit(EXIT_FAILURE);
+	}
+	alpm_db_t *local = alpm_get_localdb(handle);
+	{
+		if (options.output > 1) {
+			fprintf(stdout, "ALPM database: %s\n", alpm_db_get_name(local));
+		}
+		alpm_list_t *pkgs = alpm_db_get_pkgcache(local);
+		alpm_list_t *p;
+		for (p = pkgs; p; p = alpm_list_next(p)) {
+			alpm_pkg_t *pkg = p->data;
+			if (options.output > 1) {
+				fprintf(stdout, "ALPM package: %s/%s\n", alpm_db_get_name(local), alpm_pkg_get_name(pkg));
+			}
+		}
+	}
+	/* FIXME: get database names from /etc/pacman.conf */
+	alpm_register_syncdb(handle, "custom", ALPM_SIG_DATABASE_OPTIONAL);
+	alpm_register_syncdb(handle, "core", ALPM_SIG_DATABASE_OPTIONAL);
+	alpm_register_syncdb(handle, "extra", ALPM_SIG_DATABASE_OPTIONAL);
+	alpm_register_syncdb(handle, "community", ALPM_SIG_DATABASE_OPTIONAL);
+	alpm_register_syncdb(handle, "multilib", ALPM_SIG_DATABASE_OPTIONAL);
+	alpm_register_syncdb(handle, "ec2", ALPM_SIG_DATABASE_OPTIONAL);
+	alpm_register_syncdb(handle, "testing", ALPM_SIG_DATABASE_OPTIONAL);
+	alpm_register_syncdb(handle, "community-testing", ALPM_SIG_DATABASE_OPTIONAL);
+	alpm_register_syncdb(handle, "multilib-testing", ALPM_SIG_DATABASE_OPTIONAL);
+
+	alpm_list_t *list = alpm_get_syncdbs(handle);
+	alpm_list_t *d;
+	for (d = list; d; d = alpm_list_next(d)) {
+		alpm_db_t *db = d->data;
+		if (options.output > 1) {
+			fprintf(stdout, "ALPM database: %s\n", alpm_db_get_name(db));
+		}
+		alpm_list_t *pkgs = alpm_db_get_pkgcache(db);
+		alpm_list_t *p;
+		for (p = pkgs; p; p = alpm_list_next(p)) {
+			alpm_pkg_t *pkg = p->data;
+			if (options.output > 1) {
+				fprintf(stdout, "ALPM package: %s/%s\n", alpm_db_get_name(db), alpm_pkg_get_name(pkg));
+			}
+		}
+	}
+	alpm_unregister_all_syncdbs(handle);
 }
 
 /** @} */
