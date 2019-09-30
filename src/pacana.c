@@ -236,6 +236,132 @@ destroy_dbhash(gpointer data)
 	free(dbhash);
 }
 
+void
+check_shadow(GSList *s, alpm_pkg_t *pkg)
+{
+	struct dbhash *dbhash = s->data;
+	const char *sync = alpm_db_get_name(dbhash->db);
+	const char *name = alpm_pkg_get_name(pkg);
+	const char *vers = alpm_pkg_get_version(pkg);
+	for (GSList *n = s->next; n; n = n->next) {
+		struct dbhash *dbhash2 = n->data;
+		const char *sync2 = alpm_db_get_name(dbhash2->db);
+		if (strstr(sync2, "testing"))
+			continue;
+		alpm_pkg_t *pkg2;
+		if ((pkg2 = alpm_db_get_pkg(dbhash2->db, name))) {
+			const char *name2 = alpm_pkg_get_name(pkg2);
+			const char *vers2 = alpm_pkg_get_version(pkg2);
+
+			OPRINTF(0, "package %s/%s %s masks package %s/%s %s\n",
+					sync, name, vers, sync2, name2, vers2);
+			switch (alpm_pkg_vercmp(vers, vers2)) {
+			case -1:
+				OPRINTF(0, "package %s/%s %s out of date\n", sync, name, vers);
+				break;
+			case 0:
+				break;
+			case 1:
+				OPRINTF(0, "package %s/%s %s out of date\n", sync2, name2, vers2);
+				break;
+			}
+		}
+	}
+}
+
+gboolean
+find_depends(alpm_list_t * d, const char *name)
+{
+	for (; d; d = alpm_list_next(d)) {
+		alpm_depend_t *n = d->data;
+
+		if (!strcmp(n->name, name))
+			return TRUE;
+	}
+	return FALSE;
+}
+
+gboolean
+vcs_package(alpm_pkg_t *pkg)
+{
+	char buf[5] = { 0, };
+	const char *vcss[] = { "git", "svn", "cvs", "bzr", NULL };
+	const char *name = alpm_pkg_get_name(pkg);
+	const char **vcs;
+	const char *s;
+	for (vcs = vcss; *vcs; vcs++) {
+		strcpy(buf, "-");
+		strcat(buf, *vcs);
+		if (!(s = strstr(name, buf)) || s != name + strlen(name) - 4) {
+//			alpm_db_t *db = alpm_pkg_get_db(pkg);
+//			const char *sync = alpm_db_get_name(db);
+//			DPRINTF(1, "package %s/%s not named %s\n", sync, name, buf);
+			continue;
+		}
+#if 0
+		/* why do binary packages have no makedepends? */
+		if (!find_depends(alpm_pkg_get_makedepends(pkg), *vcs)) {
+			alpm_db_t *db = alpm_pkg_get_db(pkg);
+			const char *sync = alpm_db_get_name(db);
+			DPRINTF(1, "package %s/%s named %s but no makedepends %s\n", sync, name, buf, *vcs);
+			continue;
+		}
+#endif
+		return TRUE;
+	}
+	return FALSE;
+}
+
+void
+check_provides(GSList *s, alpm_pkg_t *pkg)
+{
+	if (vcs_package(pkg))
+		return;
+	struct dbhash *dbhash = s->data;
+	const char *sync = alpm_db_get_name(dbhash->db);
+	const char *name = alpm_pkg_get_name(pkg);
+	const char *vers = alpm_pkg_get_version(pkg);
+	for (alpm_list_t *p = alpm_pkg_get_provides(pkg); p; p = alpm_list_next(p)) {
+		alpm_depend_t *d = p->data;
+		const char *namep = d->name ? : name;
+		const char *versp = d->version;
+		if (d->mod == ALPM_DEP_MOD_ANY) {
+			versp = vers;
+		} else if (d->mod == ALPM_DEP_MOD_EQ) {
+			versp = d->version;
+		}
+		if (!find_depends(alpm_pkg_get_conflicts(pkg), namep))
+			continue;
+		for (GSList *n = s->next; n; n = n->next) {
+			struct dbhash *dbhash2 = n->data;
+			alpm_pkg_t *pkg2;
+			if ((pkg2 = alpm_db_get_pkg(dbhash2->db, namep))) {
+				const char *sync2 = alpm_db_get_name(dbhash2->db);
+				const char *name2 = alpm_pkg_get_name(pkg2);
+				const char *vers2 = alpm_pkg_get_version(pkg2);
+
+				OPRINTF(0, "package %s/%s %s provides package %s/%s %s\n",
+						sync, name, versp, sync2, name2, vers2);
+				if (versp) {
+					switch (alpm_pkg_vercmp(versp, vers2)) {
+					case -1:
+						if (versp != vers)
+							OPRINTF(0, "package %s/%s %s out of date\n", sync, name, versp);
+						else
+							OPRINTF(0, "package %s/%s %s could be out of date\n", sync, name, versp);
+						break;
+					case 0:
+						break;
+					case 1:
+						OPRINTF(0, "package %s/%s %s out of date\n", sync2, name2, vers2);
+						break;
+					}
+				}
+			}
+		}
+	}
+}
+
 static void
 pac_analyze(void)
 {
@@ -319,7 +445,6 @@ pac_analyze(void)
 		}
 	}
 
-
 	GSList *s;
 
 	/* skip local database */
@@ -327,16 +452,23 @@ pac_analyze(void)
 		dbhash = s->data;
 		alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
 		alpm_list_t *p;
+
 		for (p = pkgs; p; p = alpm_list_next(p)) {
-#if 0
 			alpm_pkg_t *pkg = p->data;
-			const char *name = alpm_pkg_get_name(pkg);
-			const char *version = alpm_pkg_get_version(pkg);
-			alpm_list_t *makedepends = alpm_pkg_get_makedepends(pkg);
-			alpm_list_t *conflicts = alpm_pkg_get_conflicts(pkg);
-			alpm_list_t *provides = alpm_pkg_get_provides(pkg);
-			alpm_list_t *replaces = alpm_pkg_get_replaces(pkg);
-#endif
+
+			check_shadow(s, pkg);
+		}
+	}
+	/* skip local database */
+	for (s = slist->next; s; s = s->next) {
+		dbhash = s->data;
+		alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
+		alpm_list_t *p;
+
+		for (p = pkgs; p; p = alpm_list_next(p)) {
+			alpm_pkg_t *pkg = p->data;
+
+			check_provides(s, pkg);
 		}
 	}
 	/* DO MORE! */
