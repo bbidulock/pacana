@@ -118,6 +118,14 @@ _timestamp(void)
 		fprintf(stderr, NAME "[%d]: E: [%s] %12s +%4d : %s() : ", getpid(), _timestamp(), __FILE__, __LINE__, __func__); \
 		fprintf(stderr, _args); fflush(stderr); } while (0)
 
+#define WPRINTF(_args...) do { \
+		fprintf(stderr, "W: "); \
+		fprintf(stderr, _args); fflush(stderr); } while (0)
+
+#define IPRINTF(_args...) do { \
+		fprintf(stderr, "I: "); \
+		fprintf(stderr, _args); fflush(stderr); } while (0)
+
 #define OPRINTF(_num, _args...) do { if (options.debug >= _num || options.output > _num) { \
 		fprintf(stdout, NAME "[%d]: I: [%s] ", getpid(), _timestamp()); \
 		fprintf(stdout, _args); fflush(stdout); } } while (0)
@@ -125,10 +133,6 @@ _timestamp(void)
 #define PTRACE(_num) do { if (options.debug >= _num || options.output >= _num) { \
 		fprintf(stderr, NAME "[%d]: T: [%s] %12s +%4d : %s()\n", getpid(), _timestamp(), __FILE__, __LINE__, __func__); \
 		fflush(stderr); } } while (0)
-
-#define CPRINTF(_num, c, _args...) do { if (options.output > _num) { \
-		fprintf(stdout, NAME "[%d]: C: 0x%08lx client (%c) ", getpid(), c->win, c->managed ?  'M' : 'U'); \
-		fprintf(stdout, _args); fflush(stdout); } } while (0)
 
 void
 dumpstack(const char *file, const int line, const char *func)
@@ -253,16 +257,16 @@ check_shadow(GSList *s, alpm_pkg_t *pkg)
 			const char *name2 = alpm_pkg_get_name(pkg2);
 			const char *vers2 = alpm_pkg_get_version(pkg2);
 
-			OPRINTF(0, "package %s/%s %s masks package %s/%s %s\n",
+			WPRINTF("%s/%s %s masks %s/%s %s\n",
 					sync, name, vers, sync2, name2, vers2);
 			switch (alpm_pkg_vercmp(vers, vers2)) {
 			case -1:
-				OPRINTF(0, "package %s/%s %s out of date\n", sync, name, vers);
+				WPRINTF("%s/%s %s out of date\n", sync, name, vers);
 				break;
 			case 0:
 				break;
 			case 1:
-				OPRINTF(0, "package %s/%s %s out of date\n", sync2, name2, vers2);
+				WPRINTF("%s/%s %s out of date\n", sync2, name2, vers2);
 				break;
 			}
 		}
@@ -295,7 +299,7 @@ vcs_package(alpm_pkg_t *pkg)
 		if (!(s = strstr(name, buf)) || s != name + strlen(name) - 4) {
 //			alpm_db_t *db = alpm_pkg_get_db(pkg);
 //			const char *sync = alpm_db_get_name(db);
-//			DPRINTF(1, "package %s/%s not named %s\n", sync, name, buf);
+//			DPRINTF(1, "%s/%s not named %s\n", sync, name, buf);
 			continue;
 		}
 #if 0
@@ -303,7 +307,7 @@ vcs_package(alpm_pkg_t *pkg)
 		if (!find_depends(alpm_pkg_get_makedepends(pkg), *vcs)) {
 			alpm_db_t *db = alpm_pkg_get_db(pkg);
 			const char *sync = alpm_db_get_name(db);
-			DPRINTF(1, "package %s/%s named %s but no makedepends %s\n", sync, name, buf, *vcs);
+			DPRINTF(1, "%s/%s named %s but no makedepends %s\n", sync, name, buf, *vcs);
 			continue;
 		}
 #endif
@@ -340,20 +344,70 @@ check_provides(GSList *s, alpm_pkg_t *pkg)
 				const char *name2 = alpm_pkg_get_name(pkg2);
 				const char *vers2 = alpm_pkg_get_version(pkg2);
 
-				OPRINTF(0, "package %s/%s %s provides package %s/%s %s\n",
+				WPRINTF("%s/%s %s provides %s/%s %s\n",
 						sync, name, versp, sync2, name2, vers2);
 				if (versp) {
 					switch (alpm_pkg_vercmp(versp, vers2)) {
 					case -1:
 						if (versp != vers)
-							OPRINTF(0, "package %s/%s %s out of date\n", sync, name, versp);
+							WPRINTF("%s/%s %s out of date\n", sync, name, versp);
 						else
-							OPRINTF(0, "package %s/%s %s could be out of date\n", sync, name, versp);
+							WPRINTF("%s/%s %s could be out of date\n", sync, name, versp);
 						break;
 					case 0:
 						break;
 					case 1:
-						OPRINTF(0, "package %s/%s %s out of date\n", sync2, name2, vers2);
+						WPRINTF("%s/%s %s out of date\n", sync2, name2, vers2);
+						break;
+					}
+				}
+			}
+		}
+	}
+}
+
+void
+check_vcscheck(GSList *s, alpm_pkg_t *pkg)
+{
+	if (!vcs_package(pkg))
+		return;
+	struct dbhash *dbhash = s->data;
+	const char *sync = alpm_db_get_name(dbhash->db);
+	const char *name = alpm_pkg_get_name(pkg);
+	const char *vers = alpm_pkg_get_version(pkg);
+	for (alpm_list_t *p = alpm_pkg_get_provides(pkg); p; p = alpm_list_next(p)) {
+		alpm_depend_t *d = p->data;
+		const char *namep = d->name ? : name;
+		const char *versp = d->version;
+		if (d->mod == ALPM_DEP_MOD_ANY) {
+			versp = vers;
+		} else if (d->mod == ALPM_DEP_MOD_EQ) {
+			versp = d->version;
+		}
+		if (!find_depends(alpm_pkg_get_conflicts(pkg), namep))
+			continue;
+		for (GSList *n = s->next; n; n = n->next) {
+			struct dbhash *dbhash2 = n->data;
+			alpm_pkg_t *pkg2;
+			if ((pkg2 = alpm_db_get_pkg(dbhash2->db, namep))) {
+				const char *sync2 = alpm_db_get_name(dbhash2->db);
+				const char *name2 = alpm_pkg_get_name(pkg2);
+				const char *vers2 = alpm_pkg_get_version(pkg2);
+
+				WPRINTF("%s/%s %s vcs package for %s/%s %s\n",
+						sync, name, versp, sync2, name2, vers2);
+				if (versp) {
+					switch (alpm_pkg_vercmp(versp, vers2)) {
+					case -1:
+						if (versp != vers)
+							WPRINTF("%s/%s %s out of date\n", sync, name, versp);
+						else
+							WPRINTF("%s/%s %s could be out of date\n", sync, name, versp);
+						break;
+					case 0:
+						break;
+					case 1:
+//						WPRINTF("%s/%s %s out of date\n", sync2, name2, vers2);
 						break;
 					}
 				}
@@ -406,7 +460,7 @@ pac_analyze(void)
 	{
 		size_t count = 0;
 
-		OPRINTF(1, "ALPM database: %s\n", alpm_db_get_name(dbhash->db));
+		DPRINTF(1, "ALPM database: %s\n", alpm_db_get_name(dbhash->db));
 		alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
 		alpm_list_t *p;
 
@@ -414,11 +468,11 @@ pac_analyze(void)
 			alpm_pkg_t *pkg = p->data;
 			char *name = strdup(alpm_pkg_get_name(pkg));
 
-			OPRINTF(1, "ALPM package: %s/%s\n", alpm_db_get_name(dbhash->db), name);
+			DPRINTF(1, "ALPM package: %s/%s\n", alpm_db_get_name(dbhash->db), name);
 			g_hash_table_insert(dbhash->hash, name, pkg);
 			count++;
 		}
-		OPRINTF(1, "ALPM database: %s (%zd packages)\n", alpm_db_get_name(dbhash->db), count);
+		DPRINTF(1, "ALPM database: %s (%zd packages)\n", alpm_db_get_name(dbhash->db), count);
 	}
 	list = alpm_get_syncdbs(handle);
 	for (d = list; d; d = alpm_list_next(d)) {
@@ -429,7 +483,7 @@ pac_analyze(void)
 		{
 			size_t count = 0;
 
-			OPRINTF(1, "ALPM database: %s\n", alpm_db_get_name(dbhash->db));
+			DPRINTF(1, "ALPM database: %s\n", alpm_db_get_name(dbhash->db));
 			alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
 			alpm_list_t *p;
 
@@ -437,11 +491,11 @@ pac_analyze(void)
 				alpm_pkg_t *pkg = p->data;
 				char *name = strdup(alpm_pkg_get_name(pkg));
 
-				OPRINTF(1, "ALPM package: %s/%s\n", alpm_db_get_name(dbhash->db), name);
+				DPRINTF(1, "ALPM package: %s/%s\n", alpm_db_get_name(dbhash->db), name);
 				g_hash_table_insert(dbhash->hash, name, pkg);
 				count++;
 			}
-			OPRINTF(1, "ALPM database: %s (%zd packages)\n", alpm_db_get_name(dbhash->db), count);
+			DPRINTF(1, "ALPM database: %s (%zd packages)\n", alpm_db_get_name(dbhash->db), count);
 		}
 	}
 
@@ -469,6 +523,18 @@ pac_analyze(void)
 			alpm_pkg_t *pkg = p->data;
 
 			check_provides(s, pkg);
+		}
+	}
+	/* skip local database */
+	for (s = slist->next; s; s = s->next) {
+		dbhash = s->data;
+		alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
+		alpm_list_t *p;
+
+		for (p = pkgs; p; p = alpm_list_next(p)) {
+			alpm_pkg_t *pkg = p->data;
+
+			check_vcscheck(s, pkg);
 		}
 	}
 	/* DO MORE! */
