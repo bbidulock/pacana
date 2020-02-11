@@ -123,11 +123,11 @@ _timestamp(void)
 		fprintf(stderr, _args); fflush(stderr); } while (0)
 
 #define IPRINTF(_args...) do { \
-		fprintf(stderr, "I: "); \
-		fprintf(stderr, _args); fflush(stderr); } while (0)
+		fprintf(stdout, "I: "); \
+		fprintf(stdout, _args); fflush(stdout); } while (0)
 
 #define OPRINTF(_num, _args...) do { if (options.debug >= _num || options.output > _num) { \
-		fprintf(stdout, NAME "[%d]: I: [%s] ", getpid(), _timestamp()); \
+		fprintf(stdout, "I: "); \
 		fprintf(stdout, _args); fflush(stdout); } } while (0)
 
 #define PTRACE(_num) do { if (options.debug >= _num || options.output >= _num) { \
@@ -164,21 +164,28 @@ typedef enum {
 	CommandCopying,
 } Command;
 
+#define PACANA_ANALYSIS_SHADOW	    (1<<0)
+#define PACANA_ANALYSIS_PROVIDES    (1<<1)
+#define PACANA_ANALYSIS_ALTERNATE   (1<<2)
+#define PACANA_ANALYSIS_OUTDATED    (1<<3)
+#define PACANA_ANALYSIS_VCSCHECK    (1<<4)
+#define PACANA_ANALYSIS_ALL	    (PACANA_ANALYSIS_SHADOW\
+				    |PACANA_ANALYSIS_PROVIDES\
+				    |PACANA_ANALYSIS_ALTERNATE\
+				    |PACANA_ANALYSIS_OUTDATED\
+				    |PACANA_ANALYSIS_VCSCHECK)
+
 typedef struct {
 	int debug;
 	int output;
+	unsigned long analyses;
 	Command command;
 } Options;
 
 Options options = {
 	.debug = 0,
 	.output = 1,
-	.command = CommandDefault,
-};
-
-Options defaults = {
-	.debug = 0,
-	.output = 1,
+	.analyses = PACANA_ANALYSIS_ALL,
 	.command = CommandDefault,
 };
 
@@ -274,7 +281,7 @@ check_shadow(GSList *s, alpm_pkg_t *pkg)
 }
 
 gboolean
-find_depends(alpm_list_t * d, const char *name)
+find_depends(alpm_list_t *d, const char *name)
 {
 	for (; d; d = alpm_list_next(d)) {
 		alpm_depend_t *n = d->data;
@@ -346,18 +353,33 @@ check_provides(GSList *s, alpm_pkg_t *pkg)
 
 				WPRINTF("%s/%s %s provides %s/%s %s\n",
 						sync, name, versp, sync2, name2, vers2);
+				if (versp != vers)
+					OPRINTF(2, "%s/%s %s provides %s %s\n", sync, name, vers, name2, versp);
 				if (versp) {
 					switch (alpm_pkg_vercmp(versp, vers2)) {
 					case -1:
-						if (versp != vers)
-							WPRINTF("%s/%s %s out of date\n", sync, name, versp);
-						else
+						if (versp != vers) {
+							WPRINTF("%s/%s %s out of date\n", sync, name, vers);
+						} else {
 							WPRINTF("%s/%s %s could be out of date\n", sync, name, versp);
+							OPRINTF(3, "%s/%s %s => add provides=() version to PKGBUILD\n", sync, name, versp);
+						}
 						break;
 					case 0:
+						if (versp != vers) {
+							OPRINTF(1, "%s/%s %s up to date\n", sync, name, versp);
+						} else {
+							OPRINTF(1, "%s/%s %s appears up to date\n", sync, name, versp);
+							OPRINTF(3, "%s/%s %s => add provides=() version to PKGBUILD\n", sync, name, versp);
+						}
 						break;
 					case 1:
-						WPRINTF("%s/%s %s out of date\n", sync2, name2, vers2);
+						if (versp != vers) {
+							WPRINTF("%s/%s %s out of date\n", sync, name2, vers2);
+						} else {
+							WPRINTF("%s/%s %s could be out of date\n", sync, name2, vers2);
+							OPRINTF(3, "%s/%s %s => add provides=() version to PKGBUILD\n", sync, name, versp);
+						}
 						break;
 					}
 				}
@@ -395,19 +417,34 @@ check_vcscheck(GSList *s, alpm_pkg_t *pkg)
 				const char *vers2 = alpm_pkg_get_version(pkg2);
 
 				WPRINTF("%s/%s %s vcs package for %s/%s %s\n",
-						sync, name, versp, sync2, name2, vers2);
+						sync, name, vers, sync2, name2, vers2);
+				if (versp != vers)
+					OPRINTF(2, "%s/%s %s provides %s %s\n", sync, name, vers, name2, versp);
 				if (versp) {
 					switch (alpm_pkg_vercmp(versp, vers2)) {
 					case -1:
-						if (versp != vers)
+						if (versp != vers) {
 							WPRINTF("%s/%s %s out of date\n", sync, name, versp);
-						else
+						} else {
 							WPRINTF("%s/%s %s could be out of date\n", sync, name, versp);
+							OPRINTF(3, "%s/%s %s => add provides=() version to PKGBUILD\n", sync, name, versp);
+						}
 						break;
 					case 0:
+						if (versp != vers) {
+							OPRINTF(2, "%s/%s %s up to date\n", sync, name, versp);
+						} else {
+							OPRINTF(2, "%s/%s %s appears up to date\n", sync, name, versp);
+							OPRINTF(3, "%s/%s %s => add provides=() version to PKGBUILD\n", sync, name, versp);
+						}
 						break;
 					case 1:
-//						WPRINTF("%s/%s %s out of date\n", sync2, name2, vers2);
+						if (versp != vers) {
+							WPRINTF("%s/%s %s out of date\n", sync, name2, vers2);
+						} else {
+							WPRINTF("%s/%s %s could be out of date\n", sync, name2, vers2);
+							OPRINTF(3, "%s/%s %s => add provides=() version to PKGBUILD\n", sync, name, versp);
+						}
 						break;
 					}
 				}
@@ -501,41 +538,63 @@ pac_analyze(void)
 
 	GSList *s;
 
-	/* skip local database */
-	for (s = slist->next; s; s = s->next) {
-		dbhash = s->data;
-		alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
-		alpm_list_t *p;
+	if (options.analyses & PACANA_ANALYSIS_SHADOW) {
+		OPRINTF(1, "Performing SHADOW analysis:\n");
+		/* skip local database */
+		for (s = slist->next; s; s = s->next) {
+			dbhash = s->data;
+			alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
+			alpm_list_t *p;
 
-		for (p = pkgs; p; p = alpm_list_next(p)) {
-			alpm_pkg_t *pkg = p->data;
+			for (p = pkgs; p; p = alpm_list_next(p)) {
+				alpm_pkg_t *pkg = p->data;
 
-			check_shadow(s, pkg);
+				check_shadow(s, pkg);
+			}
 		}
+		OPRINTF(1, "Done\n\n");
 	}
-	/* skip local database */
-	for (s = slist->next; s; s = s->next) {
-		dbhash = s->data;
-		alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
-		alpm_list_t *p;
+	if (options.analyses & PACANA_ANALYSIS_PROVIDES) {
+		OPRINTF(1, "Performing PROVIDES analysis:\n");
+		/* skip local database */
+		for (s = slist->next; s; s = s->next) {
+			dbhash = s->data;
+			alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
+			alpm_list_t *p;
 
-		for (p = pkgs; p; p = alpm_list_next(p)) {
-			alpm_pkg_t *pkg = p->data;
+			for (p = pkgs; p; p = alpm_list_next(p)) {
+				alpm_pkg_t *pkg = p->data;
 
-			check_provides(s, pkg);
+				check_provides(s, pkg);
+			}
 		}
+		OPRINTF(1, "Done\n\n");
 	}
-	/* skip local database */
-	for (s = slist->next; s; s = s->next) {
-		dbhash = s->data;
-		alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
-		alpm_list_t *p;
+	if (options.analyses & PACANA_ANALYSIS_VCSCHECK) {
+		OPRINTF(1, "Performing VCSCHECK analysis:\n");
+		/* skip local database */
+		for (s = slist->next; s; s = s->next) {
+			dbhash = s->data;
+			alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
+			alpm_list_t *p;
 
-		for (p = pkgs; p; p = alpm_list_next(p)) {
-			alpm_pkg_t *pkg = p->data;
+			for (p = pkgs; p; p = alpm_list_next(p)) {
+				alpm_pkg_t *pkg = p->data;
 
-			check_vcscheck(s, pkg);
+				check_vcscheck(s, pkg);
+			}
 		}
+		OPRINTF(1, "Done\n\n");
+	}
+	if (options.analyses & PACANA_ANALYSIS_OUTDATED) {
+		OPRINTF(1, "Performing OUTDATED analysis:\n");
+		WPRINTF("TODO!\n");
+		OPRINTF(1, "Done\n\n");
+	}
+	if (options.analyses & PACANA_ANALYSIS_ALTERNATE) {
+		OPRINTF(1, "Performing ALTERNATE analysis:\n");
+		WPRINTF("TODO!\n");
+		OPRINTF(1, "Done\n\n");
 	}
 	/* DO MORE! */
 
@@ -628,6 +687,42 @@ Usage:\n\
 ", argv[0]);
 }
 
+const char *
+show_analyses(unsigned long analyses)
+{
+	static char buf[80];
+
+	if (analyses == PACANA_ANALYSIS_ALL)
+		return ("all");
+	*buf = '\0';
+	if (analyses & PACANA_ANALYSIS_SHADOW) {
+		if (*buf)
+			strcat(buf, ",");
+		strcat(buf, "shadow");
+	}
+	if (analyses & PACANA_ANALYSIS_PROVIDES) {
+		if (*buf)
+			strcat(buf, ",");
+		strcat(buf, "provides");
+	}
+	if (analyses & PACANA_ANALYSIS_ALTERNATE) {
+		if (*buf)
+			strcat(buf, ",");
+		strcat(buf, "alternate");
+	}
+	if (analyses & PACANA_ANALYSIS_OUTDATED) {
+		if (*buf)
+			strcat(buf, ",");
+		strcat(buf, "outdated");
+	}
+	if (analyses & PACANA_ANALYSIS_VCSCHECK) {
+		if (*buf)
+			strcat(buf, ",");
+		strcat(buf, "vcscheck");
+	}
+	return(buf);
+}
+
 static void
 help(int argc, char *argv[])
 {
@@ -650,6 +745,9 @@ Options:\n\
         print version and exit\n\
     -C, --copying\n\
         print copying permission and exit\n\
+  Analysis Options:\n\
+    -w, --which WHICH[,[!]WHICH]...\n\
+        specify which analyses to perform [default: %4$s]\n\
   General Options:\n\
     -D, --debug [LEVEL]\n\
         increment or set debug LEVEL [default: '%2$d']\n\
@@ -657,8 +755,9 @@ Options:\n\
         increment or set output verbosity LEVEL [default: '%3$d']\n\
         this option may be repeated.\n\
 ", argv[0]
-	, defaults.debug
-	, defaults.output
+	, options.debug
+	, options.output
+	, show_analyses(options.analyses)
 	);
 	/* *INDENT-ON* */
 }
@@ -683,13 +782,14 @@ main(int argc, char *argv[]) {
 
 	while (1) {
 		int c, val;
-		char *endptr = NULL;
+		char *endptr = NULL, *str, *p;
 
 #ifdef _GNU_SOURCE
 		int option_index = 0;
 		/* *INDENT-OFF* */
 		static struct option long_options[] = {
 			{"analyze",	no_argument,		NULL, 'A'},
+			{"which",	required_argument,	NULL, 'w'},
 
 			{"debug",	optional_argument,	NULL, 'D'},
 			{"verbose",	optional_argument,	NULL, 'v'},
@@ -701,10 +801,10 @@ main(int argc, char *argv[]) {
 		};
 		/* *INDENT-ON* */
 
-		c = getopt_long_only(argc, argv, "AD::v::hVCH?", long_options,
+		c = getopt_long_only(argc, argv, "Aw:D::v::hVCH?", long_options,
 				&option_index);
 #else				/* defined _GNU_SOURCE */
-		c = getopt(argc, argv, "ADvhVC?");
+		c = getopt(argc, argv, "AwDvhVC?");
 #endif				/* defined _GNU_SOURCE */
 		if (c == -1) {
 			if (options.debug)
@@ -714,6 +814,92 @@ main(int argc, char *argv[]) {
 		switch (c) {
 		case 0:
 			goto bad_usage;
+		case 'A':	/* -A, --analyze */
+			if (options.command != CommandDefault)
+				goto bad_command;
+			if (command == CommandDefault)
+				command = CommandAnalyze;
+			options.command = CommandAnalyze;
+			break;
+		case 'w':	/* -w, --which [!]WHICH,[[!]WHICH]... */
+			options.analyses = 0;
+			endptr = NULL;
+			for (str = optarg; (p = strtok_r(str, ",", &endptr)); str = NULL) {
+				int reverse = 0;
+
+				if (options.debug)
+					fprintf(stderr, "%s: got token '%s'\n", argv[0], p);
+				if (*p == '!') {
+					reverse = 1;
+					p++;
+				}
+				if (*p == '\0')
+					continue;
+				if (!strcasecmp(p, "all")) {
+					if (options.debug)
+						fprintf(stderr, "%s: found token '%s'\n", argv[0], p);
+					if (reverse) {
+						options.analyses &= ~PACANA_ANALYSIS_ALL;
+					} else {
+						options.analyses |= PACANA_ANALYSIS_ALL;
+					}
+					continue;
+				}
+				if (!strcasecmp(p, "shadow")) {
+					if (options.debug)
+						fprintf(stderr, "%s: found token '%s'\n", argv[0], p);
+					if (reverse) {
+						options.analyses &= ~PACANA_ANALYSIS_SHADOW;
+					} else {
+						options.analyses |= PACANA_ANALYSIS_SHADOW;
+					}
+					continue;
+				}
+				if (!strcasecmp(p, "provides")) {
+					if (options.debug)
+						fprintf(stderr, "%s: found token '%s'\n", argv[0], p);
+					if (reverse) {
+						options.analyses &= ~PACANA_ANALYSIS_PROVIDES;
+					} else {
+						options.analyses |= PACANA_ANALYSIS_PROVIDES;
+					}
+					continue;
+				}
+				if (!strcasecmp(p, "alternate")) {
+					if (options.debug)
+						fprintf(stderr, "%s: found token '%s'\n", argv[0], p);
+					if (reverse) {
+						options.analyses &= ~PACANA_ANALYSIS_ALTERNATE;
+					} else {
+						options.analyses |= PACANA_ANALYSIS_ALTERNATE;
+					}
+					continue;
+				}
+				if (!strcasecmp(p, "outdated")) {
+					if (options.debug)
+						fprintf(stderr, "%s: found token '%s'\n", argv[0], p);
+					if (reverse) {
+						options.analyses &= ~PACANA_ANALYSIS_OUTDATED;
+					} else {
+						options.analyses |= PACANA_ANALYSIS_OUTDATED;
+					}
+					continue;
+				}
+				if (!strcasecmp(p, "vcscheck")) {
+					if (options.debug)
+						fprintf(stderr, "%s: found token '%s'\n", argv[0], p);
+					if (reverse) {
+						options.analyses &= ~PACANA_ANALYSIS_VCSCHECK;
+					} else {
+						options.analyses |= PACANA_ANALYSIS_VCSCHECK;
+					}
+					continue;
+				}
+				goto bad_option;
+			}
+			if (options.debug)
+				fprintf(stderr, "%s: analyses specified(0x%lx): %s\n", argv[0], options.analyses, show_analyses(options.analyses));
+			break;
 		case 'D':	/* -D, --debug [level] */
 			if (options.debug)
 				fprintf(stderr, "%s: increasing debug verbosity\n", argv[0]);
@@ -737,13 +923,6 @@ main(int argc, char *argv[]) {
 			if (*endptr)
 				goto bad_option;
 			options.output = val;
-			break;
-		case 'A':	/* -A, --analyze */
-			if (options.command != CommandDefault)
-				goto bad_command;
-			if (command == CommandDefault)
-				command = CommandAnalyze;
-			options.command = CommandAnalyze;
 			break;
 		case 'h':	/* -h, --help */
 		case 'H':	/* -H, --? */
