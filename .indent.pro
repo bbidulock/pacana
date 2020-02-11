@@ -361,3 +361,9 @@
 -TXWMIconGeometry
 -TXWMState
 -TTerminal
+-Talpm_list_t
+-Talpm_depend_t
+-Talpm_pkg_t
+-Talpm_db_t
+-Talpm_errno_t
+-Talpm_handle_t
