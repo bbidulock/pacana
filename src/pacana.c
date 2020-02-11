@@ -610,6 +610,8 @@ pac_analyze(void)
 static void
 copying(int argc, char *argv[])
 {
+	(void) argc;
+	(void) argv;
 	if (!options.output && !options.debug)
 		return;
 	(void) fprintf(stdout, "\
@@ -654,6 +656,8 @@ regulations).\n\
 static void
 version(int argc, char *argv[])
 {
+	(void) argc;
+	(void) argv;
 	if (!options.output && !options.debug)
 		return;
 	(void) fprintf(stdout, "\
@@ -676,6 +680,7 @@ See `%1$s --copying' for copying permissions.\n\
 static void
 usage(int argc, char *argv[])
 {
+	(void) argc;
 	if (!options.output && !options.debug)
 		return;
 	(void) fprintf(stderr, "\
@@ -726,6 +731,7 @@ show_analyses(unsigned long analyses)
 static void
 help(int argc, char *argv[])
 {
+	(void) argc;
 	if (!options.output && !options.debug)
 		return;
 	/* *INDENT-OFF* */
@@ -765,11 +771,15 @@ Options:\n\
 static void
 set_defaults(int argc, char *argv[])
 {
+	(void) argc;
+	(void) argv;
 }
 
 static void
 get_defaults(int argc, char *argv[])
 {
+	(void) argc;
+	(void) argv;
 }
 
 int
