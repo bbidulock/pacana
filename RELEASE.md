@@ -1,15 +1,15 @@
-[pacana -- release notes.  2019-09-05]: #
+[pacana -- release notes.  2020-02-11]: #
 
-pacana 0.9 -- Initial release of pacana
-=======================================
+pacana 0.10 -- Preliminary release
+==================================
 
-This is an initial release of the pacana package that provides a number
-of tools for analyzing and working with custom archlinux repositories
-and AUR packages that may shadow or need to track existing official
-repository packages.
+This is an preliminary release of the pacana package that provides a
+number of tools for analyzing and working with custom archlinux
+repositories and AUR packages that may shadow or need to track existing
+official repository packages.
 
-This release is an initial release and includes alpha versions of the
-tools.
+This release is an preliminary release and includes alpha (but useful)
+versions of the tools.
 
 Included in the release is an autoconf tarball for building the package
 from source.  See the [NEWS](NEWS) and [TODO](TODO) file in the release

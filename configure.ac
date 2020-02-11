@@ -2,8 +2,8 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.69)
-AC_INIT([pacana],[0.9],[http://github.com/bbidulock/pacana],[pacana],[http://github.com/bbidulock/pacana/issues])
-AC_REVISION([0.9])
+AC_INIT([pacana],[0.10],[http://github.com/bbidulock/pacana],[pacana],[http://github.com/bbidulock/pacana/issues])
+AC_REVISION([0.10])
 
 # set better defaults
 AC_PREFIX_DEFAULT([/usr])
@@ -20,13 +20,13 @@ AC_CONFIG_AUX_DIR([scripts])
 AC_USE_SYSTEM_EXTENSIONS
 AC_CANONICAL_TARGET
 
-DATE='2019-09-27'
+DATE='2020-02-11'
 AC_SUBST([DATE])
 
-MDOCDATE='September 27, 2019'
+MDOCDATE='February 11, 2020'
 AC_SUBST([MDOCDATE])
 
-BRANCH='0.9'
+BRANCH='0.10'
 AC_SUBST([BRANCH])
 
 # Initialize Automake

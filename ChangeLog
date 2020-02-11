@@ -1,5 +1,169 @@
 # created with git log --stat=76 -M -C -500|fmt -sct -w80
 
+commit 2a7c4bf11bcbeb56c7d0065906de77d5dbd2628c
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Tue Feb 11 04:19:49 2020 -0700
+
+    update copyright headers
+
+ src/pacana.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+commit 7be8e6682ae68e851ade6c34e9978abdc6a1fdf5
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Tue Feb 11 04:19:14 2020 -0700
+
+    fixups for -Wextra
+
+ src/pacana.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+commit 79de8b19222a386a93c63a6312a3c8a21bfd7656
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Tue Feb 11 04:16:15 2020 -0700
+
+    add some types
+
+ .indent.pro | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+commit d471287d310ace898a6afc2dd50f8efed50dab8b
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Tue Feb 11 04:15:51 2020 -0700
+
+    better cscope and MDOCDATE
+
+ autogen.sh   | 8 ++++++--
+ configure.sh | 7 ++-----
+ 2 files changed, 8 insertions(+), 7 deletions(-)
+
+commit 231935353d8fc3e2eed25b8fd06478e73db1ddbe
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Tue Feb 11 04:15:20 2020 -0700
+
+    document more
+
+ man/pacana.pod | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+commit deafe5ec37f05b4a35a6c219f5f41a2391a87096
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Tue Feb 11 04:15:02 2020 -0700
+
+    working up
+
+ src/pacana.c | 287 ++++++++++++++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 233 insertions(+), 54 deletions(-)
+
+commit e76371fc8eb45bca41366ede207119347b5bab0f
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Thu Oct 17 23:56:44 2019 -0600
+
+    add vcs checks and better printout
+
+ src/pacana.c | 104 +++++++++++++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 85 insertions(+), 19 deletions(-)
+
+commit 82e8d1128c4c0a99702b077487c4b59c6c15f19e
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sun Sep 29 20:27:10 2019 -0600
+
+    working up
+
+ src/pacana.c | 150 +++++++++++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 141 insertions(+), 9 deletions(-)
+
+commit 466bef2f0d344952f8050ce239094995287cb80b
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sun Sep 29 17:18:42 2019 -0600
+
+    working up analyzer
+
+ src/pacana.c | 111 +++++++++++++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 91 insertions(+), 20 deletions(-)
+
+commit 9aceb5cc25e56b1be4aefef9c51b51f1554a7eee
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sun Sep 29 14:45:03 2019 -0600
+
+    get database names from /etc/pacman.conf
+
+ src/pacana.c | 102 ++++++++++++++++++++++++++++++++++---------------------
+ 1 file changed, 63 insertions(+), 39 deletions(-)
+
+commit a98ebcbd3de95423cd859220827c824b17883c54
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sun Sep 29 06:52:28 2019 -0600
+
+    build up program
+
+ src/pacana.c | 63 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 63 insertions(+)
+
+commit 4c73e12244b996a26466bb73350b4121430f7885
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sun Sep 29 06:52:11 2019 -0600
+
+    update manual page
+
+ man/pacana.pod | 141 ++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 140 insertions(+), 1 deletion(-)
+
+commit e91077a20af4d4ada4a12bb4d52f881aee0a044d
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Fri Sep 27 17:39:25 2019 -0600
+
+    option processing no longer needs exemption
+
+ src/Makefile.am | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit e5439430d6213d500c6fd3397abc3957b983bc20
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Fri Sep 27 17:38:33 2019 -0600
+
+    add indent definitions
+
+ .indent.pro | 363 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 363 insertions(+)
+
+commit 66777f87a2571f5be0940af7cf17addab2e1b21b
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Fri Sep 27 17:37:31 2019 -0600
+
+    handle options processing
+
+ src/pacana.c | 464 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 462 insertions(+), 2 deletions(-)
+
+commit 9e92228e77fb8915ccff1c26a9827dd04a66014f
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Fri Sep 27 17:37:04 2019 -0600
+
+    use glib2
+
+ src/Makefile.am | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit a334dc45db6ea30eae48fc7f9580cf54e97d3451
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Fri Sep 27 17:36:27 2019 -0600
+
+    use glib2
+
+ configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 332481103bc3101a05b2fcc1ee2dd83f3132015d
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Fri Sep 27 14:46:18 2019 -0600
+
+    update release files
+
+ ChangeLog | 18 ++++++++++++++++++
+ NEWS      |  3 ++-
+ 2 files changed, 20 insertions(+), 1 deletion(-)
+
 commit 57a5b8545b2ea0268c3061033db0e72c1114131e
 Author: Brian Bidulock <bidulock@openss7.org>
 Date:   Fri Sep 27 14:44:09 2019 -0600

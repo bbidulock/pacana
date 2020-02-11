@@ -1,11 +1,53 @@
-pacana -- history of user-visible changes.  2019-09-27
+pacana -- history of user-visible changes.  2020-02-11
+
+Release pacana-0.10 released 2020-02-11
+---------------------------------------
+
+git tag -n100 -l 0.10
+
+0.10            pacana 0.10 - Preliminary release
+
+    This is an preliminary release of the pacana package that provides a
+    number of tools for analyzing and working with custom archlinux
+    repositories and AUR packages that may shadow or need to track existing
+    official repository packages.
+
+    This release is an preliminary release and includes alpha (but useful)
+    versions of the tools.
+
+    Included in the release is an autoconf tarball for building the package
+    from source. See the NEWS and TODO file in the release for more
+    information. Please report problems to the issues list on GitHub.
+
+git shortlog -e -n -w80,6,8 0.9...0.10
+
+Brian Bidulock <bidulock@openss7.org> (17):
+      use glib2
+      use glib2
+      handle options processing
+      add indent definitions
+      option processing no longer needs exemption
+      update manual page
+      build up program
+      get database names from /etc/pacman.conf
+      working up analyzer
+      working up
+      add vcs checks and better printout
+      working up
+      document more
+      better cscope and MDOCDATE
+      add some types
+      fixups for -Wextra
+      update copyright headers
+
 
 Release pacana-0.9 released 2019-09-27
 --------------------------------------
 
 git shortlog -e -n -w80,6,8 0.9
 
-Brian Bidulock <bidulock@openss7.org> (2):
+Brian Bidulock <bidulock@openss7.org> (3):
       Initial commit
       add release files
+      update release files
 
