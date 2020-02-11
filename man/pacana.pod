@@ -61,10 +61,11 @@ performed when the B<--analyze> command is specified.
 
 =over
 
-=item B<-w>, B<--what> I<WHAT>
+=item B<-w>, B<--which> I<WHICH>[B<,>[B<!>]I<WHICH>]...
 
-Specifies what analyses to perform.  The following analyses can be
-specified:
+Specifies which analyses to perform in a comma separated list.
+Prefixing an exclamation mark to the analyses specifies that analysis is
+not to be performed.  The following analyses can be specified:
 
 =over
 
