@@ -375,9 +375,9 @@ check_provides(GSList *s, alpm_pkg_t *pkg)
 						break;
 					case 1:
 						if (versp != vers) {
-							WPRINTF("%s/%s %s out of date\n", sync, name2, vers2);
+							WPRINTF("%s/%s %s out of date\n", sync2, name2, vers2);
 						} else {
-							WPRINTF("%s/%s %s could be out of date\n", sync, name2, vers2);
+							WPRINTF("%s/%s %s could be out of date\n", sync2, name2, vers2);
 							OPRINTF(3, "%s/%s %s => add provides=() version to PKGBUILD\n", sync, name, versp);
 						}
 						break;
@@ -440,9 +440,9 @@ check_vcscheck(GSList *s, alpm_pkg_t *pkg)
 						break;
 					case 1:
 						if (versp != vers) {
-							WPRINTF("%s/%s %s out of date\n", sync, name2, vers2);
+							WPRINTF("%s/%s %s out of date\n", sync2, name2, vers2);
 						} else {
-							WPRINTF("%s/%s %s could be out of date\n", sync, name2, vers2);
+							WPRINTF("%s/%s %s could be out of date\n", sync2, name2, vers2);
 							OPRINTF(3, "%s/%s %s => add provides=() version to PKGBUILD\n", sync, name, versp);
 						}
 						break;
