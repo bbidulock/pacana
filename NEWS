@@ -21,13 +21,14 @@ git tag -n100 -l 0.11
 
 git shortlog -e -n -w80,6,8 0.10...0.11
 
-Brian Bidulock <bidulock@openss7.org> (6):
+Brian Bidulock <bidulock@openss7.org> (7):
       post-release update
       whoops
       correct sync database in some messages
       update toolchain
       update release notes
       update release files
+      update release files (again)
 
 
 Release pacana-0.10 released 2020-02-11

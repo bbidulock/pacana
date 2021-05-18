@@ -1,5 +1,18 @@
 # created with git log --stat=76 -M -C -500|fmt -sct -w80
 
+commit 71d68f1bfa10d1a3ed016559e8ff2994ae1ad518
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Tue May 18 00:56:02 2021 -0600
+
+    update release files (again)
+
+ AUTHORS      |  2 +-
+ ChangeLog    | 30 ++++++++++++++++++++++++++++++
+ NEWS         |  9 ++++++---
+ README.md    |  6 +++---
+ configure.ac |  4 ++--
+ 5 files changed, 42 insertions(+), 9 deletions(-)
+
 commit 4a94de083f71812eecd058266de08ceb9dba64d2
 Author: Brian Bidulock <bidulock@openss7.org>
 Date:   Tue May 18 00:54:23 2021 -0600
