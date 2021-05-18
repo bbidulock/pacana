@@ -1,5 +1,33 @@
 # created with git log --stat=76 -M -C -500|fmt -sct -w80
 
+commit e530a9c53db6a2d3f429dad3527e44b4f26f07c6
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Fri Apr 10 18:44:10 2020 -0600
+
+    correct sync database in some messages
+
+ src/pacana.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+commit dc77568adfb2eb6a2d15cae6e4a4130d62535317
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Tue Feb 11 08:29:20 2020 -0700
+
+    whoops
+
+ autogen.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 2863b64ea6456ac112b5e39dd1837516b5ef5f73
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Tue Feb 11 04:23:16 2020 -0700
+
+    post-release update
+
+ ChangeLog | 14 ++++++++++++++
+ NEWS      |  3 ++-
+ 2 files changed, 16 insertions(+), 1 deletion(-)
+
 commit 22252950a34b4554a88ab0c74fe399856d80393d
 Author: Brian Bidulock <bidulock@openss7.org>
 Date:   Tue Feb 11 04:22:26 2020 -0700

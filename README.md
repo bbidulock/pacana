@@ -1,9 +1,9 @@
-[pacana -- read me first file.  2020-02-11]: #
+[pacana -- read me first file.  2020-04-10]: #
 
 pacana
 ===============
 
-Package `pacana-0.10` was released under GPLv3 license 2020-02-11.
+Package `pacana-0.11` was released under GPLv3 license 2020-04-10.
 
 This package provides a number of "C"-language tools that assist working
 with custom Arch Linux repositories and AUR packages that may shadow or
@@ -13,7 +13,7 @@ need to track existing official repository packages.
 Release
 -------
 
-This is the `pacana-0.10` package, released 2020-02-11.  This
+This is the `pacana-0.11` package, released 2020-04-10.  This
 release, and the latest version, can be obtained from [GitHub][1], using
 a command such as:
 
@@ -70,12 +70,12 @@ Report issues on GitHub [here][2].
 
 [1]: https://github.com/bbidulock/pacana
 [2]: https://github.com/bbidulock/pacana/issues
-[3]: https://github.com/bbidulock/pacana/blob/0.10/NEWS
-[4]: https://github.com/bbidulock/pacana/blob/0.10/ChangeLog
-[5]: https://github.com/bbidulock/pacana/blob/0.10/TODO
-[6]: https://github.com/bbidulock/pacana/blob/0.10/COMPLIANCE
-[7]: https://github.com/bbidulock/pacana/blob/0.10/INSTALL
-[8]: https://github.com/bbidulock/pacana/blob/0.10/LICENSE
-[9]: https://github.com/bbidulock/pacana/blob/0.10/COPYING
+[3]: https://github.com/bbidulock/pacana/blob/0.11/NEWS
+[4]: https://github.com/bbidulock/pacana/blob/0.11/ChangeLog
+[5]: https://github.com/bbidulock/pacana/blob/0.11/TODO
+[6]: https://github.com/bbidulock/pacana/blob/0.11/COMPLIANCE
+[7]: https://github.com/bbidulock/pacana/blob/0.11/INSTALL
+[8]: https://github.com/bbidulock/pacana/blob/0.11/LICENSE
+[9]: https://github.com/bbidulock/pacana/blob/0.11/COPYING
 
 [ vim: set ft=markdown sw=4 tw=72 nocin nosi fo+=tcqlorn spell: ]: #
