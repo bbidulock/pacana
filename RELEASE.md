@@ -1,6 +1,6 @@
-[pacana -- release notes.  2020-02-11]: #
+[pacana -- release notes.  2021-05-18]: #
 
-pacana 0.10 -- Preliminary release
+pacana 0.11 -- Preliminary release
 ==================================
 
 This is an preliminary release of the pacana package that provides a
