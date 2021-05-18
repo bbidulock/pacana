@@ -1,9 +1,9 @@
-[pacana -- read me first file.  2020-04-10]: #
+[pacana -- read me first file.  2021-05-18]: #
 
 pacana
 ===============
 
-Package `pacana-0.11` was released under GPLv3 license 2020-04-10.
+Package `pacana-0.11` was released under GPLv3 license 2021-05-18.
 
 This package provides a number of "C"-language tools that assist working
 with custom Arch Linux repositories and AUR packages that may shadow or
@@ -13,7 +13,7 @@ need to track existing official repository packages.
 Release
 -------
 
-This is the `pacana-0.11` package, released 2020-04-10.  This
+This is the `pacana-0.11` package, released 2021-05-18.  This
 release, and the latest version, can be obtained from [GitHub][1], using
 a command such as:
 
