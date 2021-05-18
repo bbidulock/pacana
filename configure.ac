@@ -1,9 +1,9 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ(2.69)
-AC_INIT([pacana],[0.10],[http://github.com/bbidulock/pacana],[pacana],[http://github.com/bbidulock/pacana/issues])
-AC_REVISION([0.10])
+AC_PREREQ([2.71])
+AC_INIT([pacana],[0.11],[http://github.com/bbidulock/pacana],[pacana],[http://github.com/bbidulock/pacana/issues])
+AC_REVISION([0.11])
 
 # set better defaults
 AC_PREFIX_DEFAULT([/usr])
@@ -20,13 +20,13 @@ AC_CONFIG_AUX_DIR([scripts])
 AC_USE_SYSTEM_EXTENSIONS
 AC_CANONICAL_TARGET
 
-DATE='2020-02-11'
+DATE='2020-04-10'
 AC_SUBST([DATE])
 
-MDOCDATE='February 11, 2020'
+MDOCDATE='April 10, 2020'
 AC_SUBST([MDOCDATE])
 
-BRANCH='0.10'
+BRANCH='0.11'
 AC_SUBST([BRANCH])
 
 # Initialize Automake
@@ -92,7 +92,9 @@ PKG_PROG_PKG_CONFIG([0.14.0])
 
 # Checks for header files.
 AS_BOX([Header Files])
-AC_HEADER_STDC
+AC_CHECK_INCLUDES_DEFAULT
+AC_PROG_EGREP
+
 dnl AC_PATH_X
 dnl AC_PATH_XTRA
 AC_CHECK_HEADERS([fcntl.h locale.h stddef.h stdint.h stdlib.h string.h strings.h sys/ioctl.h sys/time.h syslog.h unistd.h])
@@ -107,7 +109,7 @@ AS_BOX([Library Functions])
 AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
-AC_CHECK_FUNCS([gethostname memmove select strcasecmp strchr strcspn strdup strerror strncasecmp strndup strpbrk strrchr strspn strstr strtol strtoul])
+AC_CHECK_FUNCS([gethostname memmove select strcasecmp strchr strcspn strdup strerror strncasecmp strndup strpbrk strrchr strspn strstr strtol strtoul gettimeofday setlocale])
 
 AS_BOX([X11 Extension Libraries])
 
@@ -133,8 +135,7 @@ dnl PKG_CHECK_MODULES([SYSTEMD],[libsystemd])
 dnl PKG_CHECK_MODULES([GNOME_MENU],[libgnome-menu-3.0],
 dnl 		[AC_DEFINE([HAVE_GNOME_MENUS_3],[1],[Define to 1 to support GNOME menus 3.])])
 dnl AC_ARG_ENABLE([gnome-menus3],
-dnl 	AC_HELP_STRING([--disable-gnome-menus3],
-dnl 		[Disable GNOME menus 3.0 (use 2.0 instead) @<:@default=auto@:>@]))
+dnl 	AS_HELP_STRING([--disable-gnome-menus3],[dnl 		Disable GNOME menus 3.0 (use 2.0 instead) @<:@default=auto@:>@]))
 dnl if test "x$enable_gnome_menus3" != xno ; then
 dnl 	PKG_CHECK_MODULES([GNOME_MENU],[libgnome-menu-3.0],
 dnl 		[AC_DEFINE([HAVE_GNOME_MENUS_3],[1],[Define to 1 to support GNOME menus 3.])],
@@ -149,8 +150,7 @@ dnl 	PKG_CHECK_MODULES([GIO_UNIX],[gio-unix-2.0])
 dnl fi
 
 dnl AC_ARG_ENABLE([xrandr],
-dnl 	AC_HELP_STRING([--disable-xrandr],
-dnl 		[Disable XRANDR support @<:@default=auto@:>@]))
+dnl 	AS_HELP_STRING([--disable-xrandr],[dnl 		Disable XRANDR support @<:@default=auto@:>@]))
 dnl if test "x$enable_xrandr" != xno ; then
 dnl 	PKG_CHECK_MODULES([XRANDR],[xrandr],
 dnl 		[AC_DEFINE([XRANDR],[1], [Define to 1 to support XRANDR extension.])],
@@ -160,8 +160,7 @@ dnl AC_MSG_CHECKING([for XRANDR support])
 dnl AC_MSG_RESULT([${enable_xrandr:-yes}])
 
 dnl AC_ARG_ENABLE([xinerama],
-dnl 	AC_HELP_STRING([--disable-xinerama],
-dnl 		[Disable XINERAMA support @<:@default=auto@:>@]))
+dnl 	AS_HELP_STRING([--disable-xinerama],[dnl 		Disable XINERAMA support @<:@default=auto@:>@]))
 dnl if test "x$enable_xinerama" != xno ; then
 dnl 	PKG_CHECK_MODULES([XINERAMA],[xinerama],
 dnl 		[AC_DEFINE([XINERAMA],[1], [Define to 1 to support XINERAMA extension.])],
@@ -171,8 +170,7 @@ dnl AC_MSG_CHECKING([for XINERAMA support])
 dnl AC_MSG_RESULT([${enable_xinerama:-yes}])
 
 AC_ARG_ENABLE([debug],
-	AC_HELP_STRING([--enable-debug],
-		[Enable debugging support @<:@default=disabled@:>@]))
+	AS_HELP_STRING([--enable-debug],[Enable debugging support @<:@default=disabled@:>@]))
 if test "x$enable_debug" = xyes ; then
 	AC_DEFINE_UNQUOTED([DEBUG],[],[Define to enable debugging])
 fi
