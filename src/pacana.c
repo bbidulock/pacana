@@ -172,11 +172,15 @@ typedef enum {
 #define PACANA_ANALYSIS_ALTERNATE   (1<<2)
 #define PACANA_ANALYSIS_OUTDATED    (1<<3)
 #define PACANA_ANALYSIS_VCSCHECK    (1<<4)
+#define PACANA_ANALYSIS_STRANDED    (1<<5)
+#define PACANA_ANALYSIS_AURCHECK    (1<<6)
 #define PACANA_ANALYSIS_ALL	    (PACANA_ANALYSIS_SHADOW\
 				    |PACANA_ANALYSIS_PROVIDES\
 				    |PACANA_ANALYSIS_ALTERNATE\
 				    |PACANA_ANALYSIS_OUTDATED\
-				    |PACANA_ANALYSIS_VCSCHECK)
+				    |PACANA_ANALYSIS_VCSCHECK\
+				    |PACANA_ANALYSIS_STRANDED\
+				    |PACANA_ANALYSIS_AURCHECK)
 
 typedef struct {
 	int debug;
@@ -596,6 +600,16 @@ pac_analyze(void)
 	}
 	if (options.analyses & PACANA_ANALYSIS_ALTERNATE) {
 		OPRINTF(1, "Performing ALTERNATE analysis:\n");
+		WPRINTF("TODO!\n");
+		OPRINTF(1, "Done\n\n");
+	}
+	if (options.analyses & PACANA_ANALYSIS_STRANDED) {
+		OPRINTF(1, "Performing STRANDED analysis:\n");
+		WPRINTF("TODO!\n");
+		OPRINTF(1, "Done\n\n");
+	}
+	if (options.analyses & PACANA_ANALYSIS_AURCHECK) {
+		OPRINTF(1, "Performing AURCHECK analysis:\n");
 		WPRINTF("TODO!\n");
 		OPRINTF(1, "Done\n\n");
 	}
