@@ -97,11 +97,10 @@ AC_PROG_EGREP
 
 dnl AC_PATH_X
 dnl AC_PATH_XTRA
-AC_CHECK_HEADERS([fcntl.h locale.h stddef.h stdint.h stdlib.h string.h strings.h sys/ioctl.h sys/time.h syslog.h unistd.h])
+AC_CHECK_HEADERS([fcntl.h stdint.h strings.h sys/ioctl.h sys/time.h syslog.h unistd.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AS_BOX([Typedefs, Structures, Compiler])
-AC_TYPE_PID_T
 AC_TYPE_SIZE_T
 
 # Checks for library functions.
@@ -109,9 +108,9 @@ AS_BOX([Library Functions])
 AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
-AC_CHECK_FUNCS([gethostname memmove select strcasecmp strchr strcspn strdup strerror strncasecmp strndup strpbrk strrchr strspn strstr strtol strtoul gettimeofday setlocale])
+AC_CHECK_FUNCS([gettimeofday setlocale strcasecmp strdup strerror strstr strtoul])
 
-AS_BOX([X11 Extension Libraries])
+AS_BOX([Extension Libraries])
 
 PKG_CHECK_MODULES([ALPM],[libalpm])
 dnl PKG_CHECK_MODULES([X11],[x11])
@@ -131,6 +130,8 @@ dnl PKG_CHECK_MODULES([GTK],[gtk+-2.0 >= 2.4.0])
 dnl PKG_CHECK_MODULES([WNCK],[libwnck-1.0])
 dnl PKG_CHECK_MODULES([CAIRO],[cairo])
 dnl PKG_CHECK_MODULES([SYSTEMD],[libsystemd])
+PKG_CHECK_MODULES([CURL],[libcurl])
+PKG_CHECK_MODULES([JSONC],[json-c])
 
 dnl PKG_CHECK_MODULES([GNOME_MENU],[libgnome-menu-3.0],
 dnl 		[AC_DEFINE([HAVE_GNOME_MENUS_3],[1],[Define to 1 to support GNOME menus 3.])])
@@ -209,9 +210,8 @@ appdefaultsdir='$(sharedir)/X11/app-defaults'
 AC_SUBST([appdefaultsdir])
 
 AC_CONFIG_FILES([Makefile
-		 src/Makefile
-		 man/Makefile
-		 ])
+                 man/Makefile
+                 src/Makefile])
 AC_OUTPUT
 
 # vim: set ft=config:
