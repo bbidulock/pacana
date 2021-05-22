@@ -114,23 +114,25 @@ provide (and conflict with) a package contained in a lower priority
 database, and whether the package is of an older version than the
 package that it masks.
 
-=item C<alternate>
-
-Check whether packages in a local or sync database provide a name
-(virtual or real package name) that is also provided by a package in
-another (or the same) database.
-
-=item C<outdated>
-
 =item C<vcscheck>
 
 Checks whether development packages in a sync database provide (and
 conflict with) a package contained in a lower priority database, which
 is of older version than the package that it masks.
 
-=item C<stranded>
+=item C<outdated>
 
-=item C<foreign>
+TODO
+
+=item C<alternate>
+
+Check whether packages in a local or sync database provide a name
+(virtual or real package name) that is also provided by a package in
+another (or the same) database.  It also checks whether the version
+provided by an alternate is out of date with respect to the version
+provided by another alternate.
+
+=item C<stranded>
 
 Checks whether packages that exist in the local database and do not
 exist in a sync database, or packages that exist in a custom sync
@@ -138,17 +140,23 @@ database, exist in the AUR and are of an older version than that
 contained in the AUR.
 
 When no corresponding package exists in the AUR, and the package is from
-the local database, they are marked as stranded.  When they exist in a
-custom database, they are marked as foreign.
+the local database, they are marked as C<stranded>.  When they exist in a
+custom database, they are marked as C<foreign>.
 
 Note that these checks are only performed when access to the AUR has be
 activated.
 
 =item C<aurcheck>
 
+Checks whether packages provided by custom sync databases are present
+in the AUR and whether they are up to date with the AUR.
+
+Note that these checks are only performed when access to the AUR has be
+activated.
+
 =back
 
-=item B<-r>, B<--repository> I<REPOSITORY>[B<,>[B<!>]I<REPOSITORY>]...
+=item B<-r>, B<--repos> I<REPO>[B<,>[B<!>]I<REPO>]...
 
 Specifies which repositories to analyzed in a comma separated list.
 Prefixing an exclamation mark to the repository specifies that analysis
@@ -212,23 +220,6 @@ when the version from masked database differs from the masking database.
 This information is generated whether or not the packages in question
 are installed on the querying system.
 
-=item C<alternate>
-
-Check whether packages in a local or sync database provide a name
-(virtual or real package name) that is also provided by a package in
-another (or the same) database.  If the provided name also has a
-version, checks whether each of the alternate packages are at the same
-version.
-
-This is useful for detecting groups of packages which are alternates to
-each other, whether inclusive or exclusive depends on whether the
-packages also conflict with each other.  It also detects whether one of
-the alternates is out of date when compared to the other alternates.
-
-When the AUR is activated, packages identified as alternates are also
-checked against the AUR to determine whether any of the alternate
-packages are out of date with respect to the AUR.
-
 =item C<provides>
 
 Check whether packages in a local or sync database of higher priority
@@ -271,6 +262,28 @@ VCS package is installed.
 When the AUR is activated, packages identified in this fashion are also
 checked against the AUR to determine whether they are out of date with
 respect to the AUR.
+
+=item C<outdated>
+
+TODO
+
+=item C<alternate>
+
+Check whether packages in a local or sync database provide a name
+(virtual or real package name) that is also provided by a package in
+another (or the same) database.  If the provided name also has a
+version, checks whether each of the alternate packages are at the same
+version.
+
+This is useful for detecting groups of packages which are alternates to
+each other, whether inclusive or exclusive depends on whether the
+packages also conflict with each other.  It also detects whether one of
+the alternates is out of date when compared to the other alternates.
+
+When the AUR is activated, packages identified as alternates that come
+from a custom database are also checked against the AUR to determine
+whether any of the alternate packages are out of date with respect to
+the AUR.
 
 =item C<stranded>
 
