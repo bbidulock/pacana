@@ -6,9 +6,9 @@ bin_PROGRAMS = \
 EXTRA_PROGRAMS =
 
 pacana_CPPFLAGS = -DNAME=\"pacana\"
-pacana_CFLAGS = $(AM_CFLAGS) $(ALPM_CFLAGS) $(GLIB_CFLAGS)
+pacana_CFLAGS = $(AM_CFLAGS) $(ALPM_CFLAGS) $(GLIB_CFLAGS) $(CURL_CFLAGS) $(JSONC_CFLAGS)
 pacana_SOURCES = pacana.c
-pacana_LDADD = $(GLIB_LIBS) $(ALPM_LIBS)
+pacana_LDADD = $(JSONC_LIBS) $(CURL_LIBS) $(GLIB_LIBS) $(ALPM_LIBS)
 
 dist_bin_SCRIPTS =
 
