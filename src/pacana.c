@@ -280,7 +280,6 @@ destroy_dbhash(gpointer data)
 
 	if (dbhash->hash)
 		g_hash_table_destroy(dbhash->hash);
-	dbhash->db = NULL;
 	free(dbhash->name);
 	dbhash->name = NULL;
 	dbhash->pkgs = NULL;
@@ -301,7 +300,7 @@ check_shadow(GSList *s, alpm_pkg_t *pkg)
 		if (strstr(sync2, "testing"))
 			continue;
 		alpm_pkg_t *pkg2;
-		if ((pkg2 = alpm_db_get_pkg(dbhash2->db, name))) {
+		if ((pkg2 = g_hash_table_lookup(dbhash2->hash, name))) {
 			const char *name2 = alpm_pkg_get_name(pkg2);
 			const char *vers2 = alpm_pkg_get_version(pkg2);
 
@@ -387,7 +386,7 @@ check_provides(GSList *s, alpm_pkg_t *pkg)
 		for (GSList *n = s->next; n; n = n->next) {
 			struct dbhash *dbhash2 = n->data;
 			alpm_pkg_t *pkg2;
-			if ((pkg2 = alpm_db_get_pkg(dbhash2->db, namep))) {
+			if ((pkg2 = g_hash_table_lookup(dbhash2->hash, namep))) {
 				const char *sync2 = dbhash2->name;
 				const char *name2 = alpm_pkg_get_name(pkg2);
 				const char *vers2 = alpm_pkg_get_version(pkg2);
@@ -452,7 +451,7 @@ check_vcscheck(GSList *s, alpm_pkg_t *pkg)
 		for (GSList *n = s->next; n; n = n->next) {
 			struct dbhash *dbhash2 = n->data;
 			alpm_pkg_t *pkg2;
-			if ((pkg2 = alpm_db_get_pkg(dbhash2->db, namep))) {
+			if ((pkg2 = g_hash_table_lookup(dbhash2->hash, namep))) {
 				const char *sync2 = dbhash2->name;
 				const char *name2 = alpm_pkg_get_name(pkg2);
 				const char *vers2 = alpm_pkg_get_version(pkg2);
@@ -662,7 +661,6 @@ parse_data(const char *data)
 		goto done;
 	}
 	dbhash = calloc(1, sizeof(*aur_db));
-	dbhash->db = NULL;
 	dbhash->name = strdup("aur");
 	dbhash->pkgs = NULL;
 	dbhash->hash = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);
@@ -923,11 +921,12 @@ pac_analyze(void)
 	}
 	GSList *slist = NULL;
 	struct dbhash *dbhash;
+	alpm_db_t *db;
 
 	dbhash = calloc(1, sizeof(*dbhash));
-	dbhash->db = alpm_get_localdb(handle);
-	dbhash->name = strdup(alpm_db_get_name(dbhash->db));
-	dbhash->pkgs = alpm_db_get_pkgcache(dbhash->db);
+	db = alpm_get_localdb(handle);
+	dbhash->name = strdup(alpm_db_get_name(db));
+	dbhash->pkgs = alpm_db_get_pkgcache(db);
 	dbhash->hash = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);
 	slist = g_slist_append(slist, dbhash);
 	{
@@ -949,9 +948,9 @@ pac_analyze(void)
 	list = alpm_get_syncdbs(handle);
 	for (d = list; d; d = alpm_list_next(d)) {
 		dbhash = calloc(1, sizeof(*dbhash));
-		dbhash->db = d->data;
-		dbhash->name = strdup(alpm_db_get_name(dbhash->db));
-		dbhash->pkgs = alpm_db_get_pkgcache(dbhash->db);
+		db = d->data;
+		dbhash->name = strdup(alpm_db_get_name(db));
+		dbhash->pkgs = alpm_db_get_pkgcache(db);
 		dbhash->hash = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);
 		slist = g_slist_append(slist, dbhash);
 		{
