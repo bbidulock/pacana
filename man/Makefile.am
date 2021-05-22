@@ -6,7 +6,7 @@ nodist_man1_MANS = $(my_man1_files)
 CLEANFILES = $(my_man1_files)
 
 $(alias_man_files):
-	echo ".so man1/xde-menu.1" >$@
+	echo ".so man1/pacana.1" >$@
 
 EXTRA_DIST = \
 	pacana.pod

@@ -54,12 +54,39 @@ Prints detailed copying permissions and exits.
 
 =back
 
+=head2 GENERAL OPTIONS
+
+The following are general options:
+
+=over
+
+=item B<-v>, B<--verbose> [I<LEVEL>]
+
+Print diagnostic information to standard error during operation.  This
+option can be repeated to increase the verbosity of output.  The default
+level is 1.
+
+=item B<-D>, B<--debug> [I<LEVEL>]
+
+Prints debugging information to standard error during operation.  This
+option can be repeated to increase the debugging level.  The default
+level is 0.
+
+=back
+
 =head2 ANALYSIS OPTIONS
 
 The following are analysis options.  These options affect the analysis
 performed when the B<--analyze> command is specified.
 
 =over
+
+=item B<-a>, B<--aur> [I<URL>]
+
+Specifies that analysis is to be performed on AUR packages as well.
+Optionally specifies the base I<URL> at which to query the AUR using the
+version 5 RPC API.  The default is to not examine the AUR.  The default
+I<URL>, when not specified, is F<https://aur.archlinux.org/rpc/>.
 
 =item B<-w>, B<--which> I<WHICH>[B<,>[B<!>]I<WHICH>]...
 
@@ -101,27 +128,50 @@ Checks whether development packages in a sync database provide (and
 conflict with) a package contained in a lower priority database, which
 is of older version than the package that it masks.
 
-=back
+=item C<stranded>
+
+=item C<foreign>
+
+Checks whether packages that exist in the local database and do not
+exist in a sync database, or packages that exist in a custom sync
+database, exist in the AUR and are of an older version than that
+contained in the AUR.
+
+When no corresponding package exists in the AUR, and the package is from
+the local database, they are marked as stranded.  When they exist in a
+custom database, they are marked as foreign.
+
+Note that these checks are only performed when access to the AUR has be
+activated.
+
+=item C<aurcheck>
 
 =back
 
-=head2 GENERAL OPTIONS
+=item B<-r>, B<--repository> I<REPOSITORY>[B<,>[B<!>]I<REPOSITORY>]...
 
-The following are general options:
+Specifies which repositories to analyzed in a comma separated list.
+Prefixing an exclamation mark to the repository specifies that analysis
+is not to be performed.
 
-=over
+The default is to analyze all repositories.  Also, the default for sync
+repositories known to pacman that are not listed is to analyze the
+repository.  Therefore, a list of repositories containing only
+exclamation mark prefixed entries will specify repositories to exclude
+from the list.
 
-=item B<-v>, B<--verbose> [I<LEVEL>]
+=item B<-c>, B<--custom> I<CUSTOM>[B<,>[B<!>]I<CUSTOM>]...
 
-Print diagnostic information to standard error during operation.  This
-option can be repeated to increase the verbosity of output.  The default
-level is 1.
+Specifies which repositories are to be considered custom repositories in
+a comma separated list.  Prefixing an exclamation mark to the repository
+specifies that it is to be considered a standard sync repository.
+Custom sync repositories are those that may contain binary packages that
+correspond to built AUR packages.
 
-=item B<-D>, B<--debug> [I<LEVEL>]
-
-Prints debugging information to standard error during operation.  This
-option can be repeated to increase the debugging level.  The default
-level is 0.
+The default is to consider sync repositories that match the name of an
+official Arch Linux sync repository to be considered non-custom.  Sync
+repositories that do not match a name of an official Arch Linux sync
+repository are considered custom.
 
 =back
 
@@ -146,7 +196,8 @@ This is useful for detecting custom repository packages that have the
 same name as an official Arch Linux repository package.  Note that these
 packages cannot originate on the AUR (Arch Linux User Repository)
 because AUR packages are forbidden from having the same name as an
-official repository package.
+official repository package; therefore, the AUR is never checked for
+these packages.
 
 For example, if I rebuild the F<bind> package to not require C<python>,
 but instead make it optional, and then place it in a custom repository
@@ -174,6 +225,10 @@ each other, whether inclusive or exclusive depends on whether the
 packages also conflict with each other.  It also detects whether one of
 the alternates is out of date when compared to the other alternates.
 
+When the AUR is activated, packages identified as alternates are also
+checked against the AUR to determine whether any of the alternate
+packages are out of date with respect to the AUR.
+
 =item C<provides>
 
 Check whether packages in a local or sync database of higher priority
@@ -193,6 +248,10 @@ When F<seamonkey> hits version I<2.49.5-1> while F<seamonkey-gtk2> is
 still at version I<2.49.4-4>, it indicates that the F<seamonkey-gtk2>
 package needs to be updated.
 
+When the AUR is activated, packages identified in this fashion are also
+checked against the AUR to determine whether they are out of date with
+respect to the AUR.
+
 =item C<vcscheck>
 
 Checks whether development packages in a sync database provide (and
@@ -208,6 +267,56 @@ non-VCS package, a warning is issued that the VCS package needs
 updating (regardless of whether the package is installed).  If the VCS
 package is installed on the current system, a warning is issued that a
 VCS package is installed.
+
+When the AUR is activated, packages identified in this fashion are also
+checked against the AUR to determine whether they are out of date with
+respect to the AUR.
+
+=item C<stranded>
+
+Checks whether packages that exist in the local database and do not
+exist in a sync database, or packages that exist in a custom sync
+database, exist in the AUR.  When they do not exist in the AUR, and the
+package is from the local database, they are marked as C<stranded>; a
+custom database, marked as C<foreign>.  When the package is from the
+local database, but not found in any custom sync database, and exists in
+the AUR, they are marked as C<divorced>.
+
+This can help identify official Arch Linux sync repository packages that
+have been removed from the official repositories and have not been added
+(yet) to the AUR in the case of C<stranded> packages, or that have been
+added to the AUR in the case of C<divorced> packages.
+
+It can also help to identify custom sync repository packages that
+correspond to a package that has been removed from the AUR in the case
+of C<foreign> packages.
+
+It used to be that Arch Linux maintainers always moved packages that
+were removed from official repositories to the AUR and C<stranded>
+packages very seldom occurred.  This practice seems to have recently
+been dropped and C<stranded> packages often occur.
+
+These checks are only performed by default when the AUR is activated.
+
+The action needed for a C<stranded> package is to add the package to
+the AUR, compile the package and add it to the custom repository.
+
+The action needed for a C<divorced> package is to compile download the
+package from the AUR, compile the package and add it to the custom
+repository.
+
+The action needed fro a C<foreign> package is to place the source for
+the AUR package under VCS control somewhere else than the AUR.
+B<pacana> cannot detect that this action has been performed and will
+always mark such packages as C<foreign>.
+
+=item C<aurcheck>
+
+Checks whether packages that are listed in a sync database considered a
+C<custom> database are present in the AUR and whether they are out of
+date with respect to the AUR.
+
+This check is only performed by default when the AUR is activated.
 
 =back
 
@@ -244,3 +353,5 @@ Brian Bidulock L<mailto:bidulock@openss7.org>
 =cut
 
 # vim: set sw=4 tw=72 nocin spell spelllang=en_ca:
+
+
