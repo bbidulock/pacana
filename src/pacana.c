@@ -181,12 +181,19 @@ typedef enum {
 				    |PACANA_ANALYSIS_VCSCHECK\
 				    |PACANA_ANALYSIS_STRANDED\
 				    |PACANA_ANALYSIS_AURCHECK)
+#define AUR_DEFAULT_URL		    "https://aur.archlinux.org/rpc/"
+#define ARCH_STANDARD_REPOS	    "core,extra,community,multilib,ec2,testing,community-testing,multilib-testing"
+#define AUR_MAXLEN		    4443
 
 typedef struct {
 	int debug;
 	int output;
 	unsigned long analyses;
 	Command command;
+	char *url;
+	char *repos;
+	char *custom;
+	int dryrun;
 } Options;
 
 Options options = {
@@ -194,10 +201,16 @@ Options options = {
 	.output = 1,
 	.analyses = PACANA_ANALYSIS_ALL,
 	.command = CommandDefault,
+	.url = NULL,
+	.repos = NULL,
+	.custom = NULL,
+	.dryrun = 0,
 };
 
 struct dbhash {
 	alpm_db_t *db;
+	char *name;
+	alpm_list_t *pkgs;
 	GHashTable *hash;
 };
 
@@ -205,6 +218,24 @@ struct dbhash {
 
 /** @section Analyze
   * @{ */
+
+int in_list(const char *list, const char *name)
+{
+	char *where;
+	int len;
+
+	if (!list || !list[0] || !name)
+		return (0);
+	len = strlen(name);
+	if ((where = strstr(list, name))) {
+		if ((where == list || where[-1] == ',' || where[-1] == '!') && (where[len] == '\0' || where[len] == ',')) {
+			if (where != list && where[-1] == '!')
+				return (-1);
+			return (1);
+		}
+	}
+	return (0);
+}
 
 static alpm_list_t *
 get_database_names(void)
@@ -250,6 +281,9 @@ destroy_dbhash(gpointer data)
 	if (dbhash->hash)
 		g_hash_table_destroy(dbhash->hash);
 	dbhash->db = NULL;
+	free(dbhash->name);
+	dbhash->name = NULL;
+	dbhash->pkgs = NULL;
 	dbhash->hash = NULL;
 	free(dbhash);
 }
@@ -258,12 +292,12 @@ void
 check_shadow(GSList *s, alpm_pkg_t *pkg)
 {
 	struct dbhash *dbhash = s->data;
-	const char *sync = alpm_db_get_name(dbhash->db);
+	const char *sync = dbhash->name;
 	const char *name = alpm_pkg_get_name(pkg);
 	const char *vers = alpm_pkg_get_version(pkg);
 	for (GSList *n = s->next; n; n = n->next) {
 		struct dbhash *dbhash2 = n->data;
-		const char *sync2 = alpm_db_get_name(dbhash2->db);
+		const char *sync2 = dbhash2->name;
 		if (strstr(sync2, "testing"))
 			continue;
 		alpm_pkg_t *pkg2;
@@ -336,7 +370,7 @@ check_provides(GSList *s, alpm_pkg_t *pkg)
 	if (vcs_package(pkg))
 		return;
 	struct dbhash *dbhash = s->data;
-	const char *sync = alpm_db_get_name(dbhash->db);
+	const char *sync = dbhash->name;
 	const char *name = alpm_pkg_get_name(pkg);
 	const char *vers = alpm_pkg_get_version(pkg);
 	for (alpm_list_t *p = alpm_pkg_get_provides(pkg); p; p = alpm_list_next(p)) {
@@ -354,7 +388,7 @@ check_provides(GSList *s, alpm_pkg_t *pkg)
 			struct dbhash *dbhash2 = n->data;
 			alpm_pkg_t *pkg2;
 			if ((pkg2 = alpm_db_get_pkg(dbhash2->db, namep))) {
-				const char *sync2 = alpm_db_get_name(dbhash2->db);
+				const char *sync2 = dbhash2->name;
 				const char *name2 = alpm_pkg_get_name(pkg2);
 				const char *vers2 = alpm_pkg_get_version(pkg2);
 
@@ -401,7 +435,7 @@ check_vcscheck(GSList *s, alpm_pkg_t *pkg)
 	if (!vcs_package(pkg))
 		return;
 	struct dbhash *dbhash = s->data;
-	const char *sync = alpm_db_get_name(dbhash->db);
+	const char *sync = dbhash->name;
 	const char *name = alpm_pkg_get_name(pkg);
 	const char *vers = alpm_pkg_get_version(pkg);
 	for (alpm_list_t *p = alpm_pkg_get_provides(pkg); p; p = alpm_list_next(p)) {
@@ -419,7 +453,7 @@ check_vcscheck(GSList *s, alpm_pkg_t *pkg)
 			struct dbhash *dbhash2 = n->data;
 			alpm_pkg_t *pkg2;
 			if ((pkg2 = alpm_db_get_pkg(dbhash2->db, namep))) {
-				const char *sync2 = alpm_db_get_name(dbhash2->db);
+				const char *sync2 = dbhash2->name;
 				const char *name2 = alpm_pkg_get_name(pkg2);
 				const char *vers2 = alpm_pkg_get_version(pkg2);
 
@@ -458,6 +492,399 @@ check_vcscheck(GSList *s, alpm_pkg_t *pkg)
 			}
 		}
 	}
+}
+
+void
+freeit(gpointer data)
+{
+	free(data);
+}
+
+typedef struct aur_pkg {
+	char *base;			/* like alpm_pkg_get_base */
+	char *name;			/* like alpm_pkg_get_name */
+	char *version;			/* like alpm_pkg_get_version */
+	char *desc;			/* like alpm_pkg_get_desc */
+	char *url;			/* like alpm_pkg_get_url */
+	alpm_list_t *licenses;		/* like alpm_pkg_get_licenses */
+	alpm_list_t *groups;		/* like alpm_pkg_get_groups */
+	alpm_list_t *depends;		/* like alpm_pkg_get_depends */
+	alpm_list_t *optdepends;	/* like alpm_pkg_get_optdepends */
+	alpm_list_t *checkdepends;	/* like alpm_pkg_get_checkdepends */
+	alpm_list_t *makedepends;	/* like alpm_pkg_get_makedepends */
+	alpm_list_t *conflicts;		/* like alpm_pkg_get_conflicts */
+	alpm_list_t *provides;		/* like alpm_pkg_get_provides */
+	alpm_list_t *replaces;		/* like alpm_pkg_get_replaces */
+#if 0
+	int id;
+	int baseid;
+	int numvotes;
+	double popularity;
+	char *maintainer;
+	time_t first_submitted;
+	time_t last_modified;
+	char *urlpath;
+	alpm_list_t *keywords;
+#endif
+} aur_pkg_t;
+
+const char *
+aur_pkg_get_base(aur_pkg_t *pkg)
+{
+	return (pkg->base);
+}
+
+const char *
+aur_pkg_get_name(aur_pkg_t *pkg)
+{
+	return (pkg->name);
+}
+
+const char *
+aur_pkg_get_version(aur_pkg_t *pkg)
+{
+	return (pkg->version);
+}
+
+const char *
+aur_pkg_get_desc(aur_pkg_t *pkg)
+{
+	return (pkg->desc);
+}
+
+const char *
+aur_pkg_get_url(aur_pkg_t *pkg)
+{
+	return (pkg->url);
+}
+
+alpm_list_t *
+aur_pkg_get_licenses(aur_pkg_t *pkg)
+{
+	return (pkg->licenses);
+}
+
+
+alpm_list_t *
+aur_pkg_get_groups(aur_pkg_t *pkg)
+{
+	return (pkg->groups);
+}
+
+
+alpm_list_t *
+aur_pkg_get_depends(aur_pkg_t *pkg)
+{
+	return (pkg->depends);
+}
+
+
+alpm_list_t *
+aur_pkg_get_optdepends(aur_pkg_t *pkg)
+{
+	return (pkg->optdepends);
+}
+
+
+alpm_list_t *
+aur_pkg_get_checkdepends(aur_pkg_t *pkg)
+{
+	return (pkg->checkdepends);
+}
+
+
+alpm_list_t *
+aur_pkg_get_makedepends(aur_pkg_t *pkg)
+{
+	return (pkg->makedepends);
+}
+
+
+alpm_list_t *
+aur_pkg_get_conflicts(aur_pkg_t *pkg)
+{
+	return (pkg->conflicts);
+}
+
+
+alpm_list_t *
+aur_pkg_get_provides(aur_pkg_t *pkg)
+{
+	return (pkg->provides);
+}
+
+
+alpm_list_t *
+aur_pkg_get_replaces(aur_pkg_t *pkg)
+{
+	return (pkg->replaces);
+}
+
+struct dbhash *aur_db = NULL;
+
+int
+parse_data(const char *data)
+{
+	struct json_object *info, *obj, *results, *pkg;
+	enum json_tokener_error err = 0;
+	size_t i, length;
+	struct dbhash *dbhash;
+
+	info = json_tokener_parse_verbose(data, &err);
+	if (!info) {
+		EPRINTF("Could not parse data: %s\n", json_tokener_error_desc(err));
+		return (-1);
+	}
+	if (!json_object_is_type(info, json_type_object)) {
+		EPRINTF("Result wrong object type.\n");
+		goto reject;
+	}
+	if (!(obj = json_object_object_get(info, "version")) || json_object_get_int(obj) != 5) {
+		EPRINTF("Result has wrong version.\n");
+		goto reject;
+	}
+	if (!(obj = json_object_object_get(info, "type")) || strcmp(json_object_get_string(obj), "multiinfo")) {
+		EPRINTF("Result has wrong type.\n");
+		goto reject;
+	}
+	if (!(obj = json_object_object_get(info, "resultcount"))) {
+		EPRINTF("Result has no resultcount.\n");
+		goto reject;
+	}
+	if (!json_object_get_int(obj)) {
+		goto done;
+	}
+	if (!(results = json_object_object_get(info, "results")) || !json_object_is_type(results, json_type_array)) {
+		EPRINTF("Result has no results.\n");
+		goto reject;
+	}
+	if (!(length = json_object_array_length(results))) {
+		goto done;
+	}
+	dbhash = calloc(1, sizeof(*aur_db));
+	dbhash->db = NULL;
+	dbhash->name = strdup("aur");
+	dbhash->pkgs = NULL;
+	dbhash->hash = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);
+	aur_db = dbhash;
+
+	for (i = 0; i < length; i++) {
+		aur_pkg_t *aur_pkg;
+		const char *str;
+		struct json_object *array;
+
+		if (!(pkg = json_object_array_get_idx(results, i)) || !json_object_is_type(pkg, json_type_object)) {
+			EPRINTF("Wrong object type.\n");
+			continue;
+		}
+		if (!(obj = json_object_object_get(pkg, "Name")) || !(str = json_object_get_string(obj))) {
+			EPRINTF("AUR Package has no name.\n");
+			continue;
+		}
+		aur_pkg = calloc(1, sizeof(*aur_pkg));
+		alpm_list_append(&dbhash->pkgs, aur_pkg);
+		aur_pkg->name = strdup(str);
+		g_hash_table_insert(dbhash->hash, strdup(str), aur_pkg);
+		if ((obj = json_object_object_get(pkg, "PackageBase")) && (str = json_object_get_string(obj)))
+			aur_pkg->base = strdup(str);
+		if ((obj = json_object_object_get(pkg, "Version")) && (str = json_object_get_string(obj)))
+			aur_pkg->version = strdup(str);
+		if ((obj = json_object_object_get(pkg, "Description")) && (str = json_object_get_string(obj)))
+			aur_pkg->desc = strdup(str);
+		if ((obj = json_object_object_get(pkg, "URL")) && (str = json_object_get_string(obj)))
+			aur_pkg->url = strdup(str);
+		if ((array = json_object_object_get(pkg, "License"))
+		    && json_object_is_type(array, json_type_array)) {
+			size_t n, number;
+
+			number = json_object_array_length(array);
+			for (n = 0; n < number; n++)
+				if ((obj = json_object_array_get_idx(array, n))
+				    && json_object_is_type(obj, json_type_string))
+					alpm_list_append_strdup(&aur_pkg->licenses, json_object_get_string(obj));
+		}
+		if ((array = json_object_object_get(pkg, "Groups")) && json_object_is_type(array, json_type_array)) {
+			size_t n, number;
+
+			number = json_object_array_length(array);
+			for (n = 0; n < number; n++)
+				if ((obj = json_object_array_get_idx(array, n))
+				    && json_object_is_type(obj, json_type_string))
+					alpm_list_append_strdup(&aur_pkg->groups, json_object_get_string(obj));
+		}
+		if ((array = json_object_object_get(pkg, "Depends"))
+		    && json_object_is_type(array, json_type_array)) {
+			size_t n, number;
+
+			number = json_object_array_length(array);
+			for (n = 0; n < number; n++)
+				if ((obj = json_object_array_get_idx(array, n))
+				    && json_object_is_type(obj, json_type_string))
+					alpm_list_append(&aur_pkg->depends,
+							 alpm_dep_from_string(json_object_get_string(obj)));
+		}
+		if ((array = json_object_object_get(pkg, "OptDepends"))
+		    && json_object_is_type(array, json_type_array)) {
+			size_t n, number;
+
+			number = json_object_array_length(array);
+			for (n = 0; n < number; n++)
+				if ((obj = json_object_array_get_idx(array, n))
+				    && json_object_is_type(obj, json_type_string))
+					alpm_list_append(&aur_pkg->optdepends,
+							 alpm_dep_from_string(json_object_get_string(obj)));
+		}
+		if ((array = json_object_object_get(pkg, "CheckDepends"))
+		    && json_object_is_type(array, json_type_array)) {
+			size_t n, number;
+
+			number = json_object_array_length(array);
+			for (n = 0; n < number; n++)
+				if ((obj = json_object_array_get_idx(array, n))
+				    && json_object_is_type(obj, json_type_string))
+					alpm_list_append(&aur_pkg->checkdepends,
+							 alpm_dep_from_string(json_object_get_string(obj)));
+		}
+		if ((array = json_object_object_get(pkg, "MakeDepends"))
+		    && json_object_is_type(array, json_type_array)) {
+			size_t n, number;
+
+			number = json_object_array_length(array);
+			for (n = 0; n < number; n++)
+				if ((obj = json_object_array_get_idx(array, n))
+				    && json_object_is_type(obj, json_type_string))
+					alpm_list_append(&aur_pkg->makedepends,
+							 alpm_dep_from_string(json_object_get_string(obj)));
+		}
+		if ((array = json_object_object_get(pkg, "Conflicts"))
+		    && json_object_is_type(array, json_type_array)) {
+			size_t n, number;
+
+			number = json_object_array_length(array);
+			for (n = 0; n < number; n++)
+				if ((obj = json_object_array_get_idx(array, n))
+				    && json_object_is_type(obj, json_type_string))
+					alpm_list_append(&aur_pkg->conflicts,
+							 alpm_dep_from_string(json_object_get_string(obj)));
+		}
+		if ((array = json_object_object_get(pkg, "Provides"))
+		    && json_object_is_type(array, json_type_array)) {
+			size_t n, number;
+
+			number = json_object_array_length(array);
+			for (n = 0; n < number; n++)
+				if ((obj = json_object_array_get_idx(array, n))
+				    && json_object_is_type(obj, json_type_string))
+					alpm_list_append(&aur_pkg->provides,
+							 alpm_dep_from_string(json_object_get_string(obj)));
+		}
+		if ((array = json_object_object_get(pkg, "Replaces"))
+		    && json_object_is_type(array, json_type_array)) {
+			size_t n, number;
+
+			number = json_object_array_length(array);
+			for (n = 0; n < number; n++)
+				if ((obj = json_object_array_get_idx(array, n))
+				    && json_object_is_type(obj, json_type_string))
+					alpm_list_append(&aur_pkg->replaces,
+							 alpm_dep_from_string(json_object_get_string(obj)));
+		}
+	}
+      done:
+	json_object_put(info);
+	return (0);
+      reject:
+	json_object_put(info);
+	return (-1);
+}
+
+size_t
+writedata_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
+{
+	GStrvBuilder *svb = userdata;
+	gchar *data;
+
+	(void) size;
+	if ((data = g_strndup(ptr, nmemb))) {
+		g_strv_builder_add(svb, data);
+		return (nmemb);
+	}
+	return (0);
+}
+
+int
+aur_lookup_info(const char *uri)
+{
+	CURL *curl;
+
+	/* lookup info using CURL and parse result with JSON */
+	if (options.dryrun) {
+		OPRINTF(1, "Would look up:\n%s\n", uri);
+		return (0);
+	}
+	if (!(curl = curl_easy_init())) {
+		EPRINTF("Could not get CURL easy handle.\n");
+		return (-1);
+	}
+	curl_easy_setopt(curl, CURLOPT_URL, uri);
+	GStrvBuilder *svb = g_strv_builder_new();
+
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, svb);
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writedata_callback);
+	DPRINTF(1, "Lookup up in AUR:\n%s\n", uri);
+	CURLcode res = curl_easy_perform(curl);
+
+	curl_easy_cleanup(curl);
+	if (res != CURLE_OK) {
+		EPRINTF("CURL error: %s\n", curl_easy_strerror(res));
+		return (-1);
+	}
+	GStrv strv = g_strv_builder_end(svb);
+
+	g_strv_builder_unref(svb);
+	if (!strv) {
+		return (-1);
+	}
+	gchar *data = g_strjoinv(NULL, strv);
+
+	g_strfreev(strv);
+	if (!data) {
+		return (-1);
+	}
+
+	DPRINTF(1, "Got AUR info:\n%s\n", data);
+	int err = parse_data(data);
+
+	g_free(data);
+	return (err);
+}
+
+int
+aur_lookup(GSList *alist)
+{
+	GSList *a;
+	static char buf[AUR_MAXLEN + 1] = { 0, };
+	int urllen, err;
+
+	for (a = alist; a; a = a->next) {
+		strcpy(buf, options.url);
+		strcat(buf, "?v=5&type=info");
+		urllen = strlen(buf);
+		for (; a; a = a->next) {
+			int len = strlen(a->data);
+
+			if (urllen + 7 + len > AUR_MAXLEN)
+				break;
+			strcat(buf, "&arg[]=");
+			strcat(buf, a->data);
+			urllen += 7 + len;
+		}
+		if ((err = aur_lookup_info(buf)))
+			return (err);
+		if (!a)
+			break;
+	}
+	return (0);
 }
 
 static void
@@ -499,61 +926,139 @@ pac_analyze(void)
 
 	dbhash = calloc(1, sizeof(*dbhash));
 	dbhash->db = alpm_get_localdb(handle);
+	dbhash->name = strdup(alpm_db_get_name(dbhash->db));
+	dbhash->pkgs = alpm_db_get_pkgcache(dbhash->db);
 	dbhash->hash = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);
 	slist = g_slist_append(slist, dbhash);
 	{
 		size_t count = 0;
 
-		DPRINTF(1, "ALPM database: %s\n", alpm_db_get_name(dbhash->db));
-		alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
+		DPRINTF(1, "ALPM database: %s\n", dbhash->name);
 		alpm_list_t *p;
 
-		for (p = pkgs; p; p = alpm_list_next(p)) {
+		for (p = dbhash->pkgs; p; p = alpm_list_next(p)) {
 			alpm_pkg_t *pkg = p->data;
 			char *name = strdup(alpm_pkg_get_name(pkg));
 
-			DPRINTF(1, "ALPM package: %s/%s\n", alpm_db_get_name(dbhash->db), name);
+			DPRINTF(1, "ALPM package: %s/%s\n", dbhash->name, name);
 			g_hash_table_insert(dbhash->hash, name, pkg);
 			count++;
 		}
-		DPRINTF(1, "ALPM database: %s (%zd packages)\n", alpm_db_get_name(dbhash->db), count);
+		DPRINTF(1, "ALPM database: %s (%zd packages)\n", dbhash->name, count);
 	}
 	list = alpm_get_syncdbs(handle);
 	for (d = list; d; d = alpm_list_next(d)) {
 		dbhash = calloc(1, sizeof(*dbhash));
 		dbhash->db = d->data;
+		dbhash->name = strdup(alpm_db_get_name(dbhash->db));
+		dbhash->pkgs = alpm_db_get_pkgcache(dbhash->db);
 		dbhash->hash = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);
 		slist = g_slist_append(slist, dbhash);
 		{
 			size_t count = 0;
 
-			DPRINTF(1, "ALPM database: %s\n", alpm_db_get_name(dbhash->db));
-			alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
+			DPRINTF(1, "ALPM database: %s\n", dbhash->name);
 			alpm_list_t *p;
 
-			for (p = pkgs; p; p = alpm_list_next(p)) {
+			for (p = dbhash->pkgs; p; p = alpm_list_next(p)) {
 				alpm_pkg_t *pkg = p->data;
 				char *name = strdup(alpm_pkg_get_name(pkg));
 
-				DPRINTF(1, "ALPM package: %s/%s\n", alpm_db_get_name(dbhash->db), name);
+				DPRINTF(1, "ALPM package: %s/%s\n", dbhash->name, name);
 				g_hash_table_insert(dbhash->hash, name, pkg);
 				count++;
 			}
-			DPRINTF(1, "ALPM database: %s (%zd packages)\n", alpm_db_get_name(dbhash->db), count);
+			DPRINTF(1, "ALPM database: %s (%zd packages)\n", dbhash->name, count);
 		}
 	}
 
 	GSList *s;
+
+	/* 
+	 * When the AUR is activated we need a list of all packages that exist
+	 * in the local database that do not exist in any sync database and the
+	 * list of all packages that exist in a "custom" sync database, and then
+	 * obtain information about them from the AUR.
+	 */
+	if (options.url) {
+		GSList *alist = NULL;
+		dbhash = slist->data;
+		alpm_list_t *p;
+
+		/* First, add to the list the names of all packages that exist in the
+		   local database that do not exist in any sync database. */
+		for (p = dbhash->pkgs; p; p = alpm_list_next(p)) {
+			alpm_pkg_t *pkg = p->data;
+			const char *name = alpm_pkg_get_name(pkg);
+			int found = 0;
+
+			/* skip local database */
+			for (s = slist->next; s; s = s->next) {
+				dbhash = s->data;
+				if (g_hash_table_lookup(dbhash->hash, name)) {
+					found = 1;
+					break;
+				}
+			}
+			if (!found) {
+				DPRINTF(1, "Adding to AUR list: %s\n", name);
+				alist = g_slist_append(alist, strdup(name));
+			}
+		}
+		/* Second, get a list of sync databases that are considered "custom".  */
+		/* skip local database */
+		for (s = slist->next; s; s = s->next) {
+			dbhash = s->data;
+			const char *sync = dbhash->name;
+
+			if (options.custom) {
+				switch (in_list(options.custom, sync)) {
+				case -1:	/* in list with ! prefixed */
+					continue;
+				case 0:	/* not in list */
+					continue;
+				case 1:	/* in list without ! prefixed */
+					break;
+				}
+			} else {
+				switch (in_list(ARCH_STANDARD_REPOS, sync)) {
+				case -1:	/* in list with ! prefixed */
+					break;
+				case 0:	/* not in list */
+					break;
+				case 1:	/* in list without ! prefixed */
+					continue;
+				}
+			}
+			DPRINTF(1, "Adding to AUR list: --> packages from %s <--\n", sync);
+			/* Third, add to the list the names of all packages from the
+			   custom databases. */
+			alpm_list_t *p;
+
+			for (p = dbhash->pkgs; p; p = alpm_list_next(p)) {
+				alpm_pkg_t *pkg = p->data;
+				const char *name = alpm_pkg_get_name(pkg);
+
+				DPRINTF(1, "Adding to AUR list: %s\n", name);
+				alist = g_slist_append(alist, strdup(name));
+			}
+		}
+		if (aur_lookup(alist)) {
+			/* mark AUR as unusable */
+			free(options.url);
+			options.url = NULL;
+		}
+		// g_slist_free_full(alist, freeit);
+	}
 
 	if (options.analyses & PACANA_ANALYSIS_SHADOW) {
 		OPRINTF(1, "Performing SHADOW analysis:\n");
 		/* skip local database */
 		for (s = slist->next; s; s = s->next) {
 			dbhash = s->data;
-			alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
 			alpm_list_t *p;
 
-			for (p = pkgs; p; p = alpm_list_next(p)) {
+			for (p = dbhash->pkgs; p; p = alpm_list_next(p)) {
 				alpm_pkg_t *pkg = p->data;
 
 				check_shadow(s, pkg);
@@ -566,10 +1071,9 @@ pac_analyze(void)
 		/* skip local database */
 		for (s = slist->next; s; s = s->next) {
 			dbhash = s->data;
-			alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
 			alpm_list_t *p;
 
-			for (p = pkgs; p; p = alpm_list_next(p)) {
+			for (p = dbhash->pkgs; p; p = alpm_list_next(p)) {
 				alpm_pkg_t *pkg = p->data;
 
 				check_provides(s, pkg);
@@ -582,10 +1086,9 @@ pac_analyze(void)
 		/* skip local database */
 		for (s = slist->next; s; s = s->next) {
 			dbhash = s->data;
-			alpm_list_t *pkgs = alpm_db_get_pkgcache(dbhash->db);
 			alpm_list_t *p;
 
-			for (p = pkgs; p; p = alpm_list_next(p)) {
+			for (p = dbhash->pkgs; p; p = alpm_list_next(p)) {
 				alpm_pkg_t *pkg = p->data;
 
 				check_vcscheck(s, pkg);
@@ -742,6 +1245,16 @@ show_analyses(unsigned long analyses)
 			strcat(buf, ",");
 		strcat(buf, "vcscheck");
 	}
+	if ((analyses & PACANA_ANALYSIS_STRANDED) && options.url) {
+		if (*buf)
+			strcat(buf, ",");
+		strcat(buf, "stranded");
+	}
+	if ((analyses & PACANA_ANALYSIS_AURCHECK) && options.url) {
+		if (*buf)
+			strcat(buf, ",");
+		strcat(buf, "aurcheck");
+	}
 	return(buf);
 }
 
@@ -769,9 +1282,17 @@ Options:\n\
     -C, --copying\n\
         print copying permission and exit\n\
   Analysis Options:\n\
+    -a, --aur [URL]\n\
+        specify analysis to include AUR at URL [default: %4$s]\n\
     -w, --which WHICH[,[!]WHICH]...\n\
-        specify which analyses to perform [default: %4$s]\n\
+        specify which analyses to perform [default: %5$s]\n\
+    -r, --repos REPOSITORY[,[!]REPOSITORY]...\n\
+        specify which repositories to analyze [default: %6$s]\n\
+    -c, --custom CUSTOM[,[!]CUSTOM]...\n\
+        specify which repositories are custom [default: %7$s]\n\
   General Options:\n\
+    -n, --dryrun\n\
+        do not access AUR but print what would be done [default: %8$s]\n\
     -D, --debug [LEVEL]\n\
         increment or set debug LEVEL [default: '%2$d']\n\
     -v, --verbose [LEVEL]\n\
@@ -780,7 +1301,11 @@ Options:\n\
 ", argv[0]
 	, options.debug
 	, options.output
+	, (options.url ? : "disabled")
 	, show_analyses(options.analyses)
+	, (options.repos ? : "all")
+	, (options.custom ? : "custom")
+	, (options.dryrun ? "enabled" : "disabled")
 	);
 	/* *INDENT-ON* */
 }
@@ -816,8 +1341,12 @@ main(int argc, char *argv[]) {
 		/* *INDENT-OFF* */
 		static struct option long_options[] = {
 			{"analyze",	no_argument,		NULL, 'A'},
+			{"aur",		optional_argument,	NULL, 'a'},
 			{"which",	required_argument,	NULL, 'w'},
+			{"repos",	required_argument,	NULL, 'r'},
+			{"custom",	required_argument,	NULL, 'c'},
 
+			{"dryrun",	no_argument,		NULL, 'n'},
 			{"debug",	optional_argument,	NULL, 'D'},
 			{"verbose",	optional_argument,	NULL, 'v'},
 			{"help",	no_argument,		NULL, 'h'},
@@ -828,10 +1357,10 @@ main(int argc, char *argv[]) {
 		};
 		/* *INDENT-ON* */
 
-		c = getopt_long_only(argc, argv, "Aw:D::v::hVCH?", long_options,
+		c = getopt_long_only(argc, argv, "Aa::w:r:c:nD::v::hVCH?", long_options,
 				&option_index);
 #else				/* defined _GNU_SOURCE */
-		c = getopt(argc, argv, "AwDvhVC?");
+		c = getopt(argc, argv, "Aa:w:r:c:nDvhVC?");
 #endif				/* defined _GNU_SOURCE */
 		if (c == -1) {
 			if (options.debug)
@@ -847,6 +1376,10 @@ main(int argc, char *argv[]) {
 			if (command == CommandDefault)
 				command = CommandAnalyze;
 			options.command = CommandAnalyze;
+			break;
+		case 'a':	/* -a, --aur [URL] */
+			free(options.url);
+			options.url = strdup(optarg ? : AUR_DEFAULT_URL);
 			break;
 		case 'w':	/* -w, --which [!]WHICH,[[!]WHICH]... */
 			options.analyses = 0;
@@ -922,10 +1455,41 @@ main(int argc, char *argv[]) {
 					}
 					continue;
 				}
+				if (!strcasecmp(p, "stranded")) {
+					if (options.debug)
+						fprintf(stderr, "%s: found token '%s'\n", argv[0], p);
+					if (reverse) {
+						options.analyses &= ~PACANA_ANALYSIS_STRANDED;
+					} else {
+						options.analyses |= PACANA_ANALYSIS_STRANDED;
+					}
+					continue;
+				}
+				if (!strcasecmp(p, "aurcheck")) {
+					if (options.debug)
+						fprintf(stderr, "%s: found token '%s'\n", argv[0], p);
+					if (reverse) {
+						options.analyses &= ~PACANA_ANALYSIS_AURCHECK;
+					} else {
+						options.analyses |= PACANA_ANALYSIS_AURCHECK;
+					}
+					continue;
+				}
 				goto bad_option;
 			}
 			if (options.debug)
 				fprintf(stderr, "%s: analyses specified(0x%lx): %s\n", argv[0], options.analyses, show_analyses(options.analyses));
+			break;
+		case 'r':	/* -r, --repos [!]REPO[,[!]REPO]... */
+			free(options.repos);
+			options.repos = strdup(optarg);
+			break;
+		case 'c':	/* -c, --custom [!]CUSTOM[,[!]CUSTOM]... */
+			free(options.custom);
+			options.custom = strdup(optarg);
+			break;
+		case 'n':	/* -n, --dryrun */
+			options.dryrun = 1;
 			break;
 		case 'D':	/* -D, --debug [level] */
 			if (options.debug)
