@@ -648,7 +648,7 @@ check_stranded_local(GSList *slist, alpm_pkg_t *pkg)
 
 		if ((pkg2 = g_hash_table_lookup(dbhash2->hash, name))) {
 			const char *sync2 = dbhash2->name;
-			const char *name2 = aur_pkg_get_name(pkg2);
+			const char *name2 = aur_pkg_get_base(pkg2);
 			const char *vers2 = aur_pkg_get_version(pkg2);
 
 			WPRINTF("%s/%s %s divorced to %s/%s %s\n", sync, name, vers, sync2, name2, vers2);
@@ -686,7 +686,7 @@ check_stranded_custom(GSList *s, alpm_pkg_t *pkg)
 
 	if ((pkg2 = g_hash_table_lookup(dbhash2->hash, name))) {
 		const char *sync2 = dbhash2->name;
-		const char *name2 = aur_pkg_get_name(pkg2);
+		const char *name2 = aur_pkg_get_base(pkg2);
 		const char *vers2 = aur_pkg_get_version(pkg2);
 
 		WPRINTF("%s/%s %s built from %s/%s %s\n", sync, name, vers, sync2, name2, vers2);
