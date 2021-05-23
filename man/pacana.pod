@@ -140,8 +140,8 @@ database, exist in the AUR and are of an older version than that
 contained in the AUR.
 
 When no corresponding package exists in the AUR, and the package is from
-the local database, they are marked as C<stranded>.  When they exist in a
-custom database, they are marked as C<foreign>.
+the local database, they are marked as C<foreign>.  When they exist in a
+custom database, they are marked as C<stranded>.
 
 Note that these checks are only performed when access to the AUR has be
 activated.
@@ -234,7 +234,7 @@ with the package that it provides.
 For example, the AUR package F<seamonkey-gtk2> with version I<2.49.4-4>
 provides the same version of the F<seamonkey> package, but with a GTK+
 interface.  The F<seamonkey-gtk2> package is in a custom repository (or
-is a foreign package) and the F<seamonkey> package is in B<community>.
+is a C<foreign> package) and the F<seamonkey> package is in B<community>.
 When F<seamonkey> hits version I<2.49.5-1> while F<seamonkey-gtk2> is
 still at version I<2.49.4-4>, it indicates that the F<seamonkey-gtk2>
 package needs to be updated.
@@ -290,38 +290,38 @@ the AUR.
 Checks whether packages that exist in the local database and do not
 exist in a sync database, or packages that exist in a custom sync
 database, exist in the AUR.  When they do not exist in the AUR, and the
-package is from the local database, they are marked as C<stranded>; a
-custom database, marked as C<foreign>.  When the package is from the
+package is from the local database, they are marked as C<foreign>; a
+custom database, marked as C<stranded>.  When the package is from the
 local database, but not found in any custom sync database, and exists in
 the AUR, they are marked as C<divorced>.
 
 This can help identify official Arch Linux sync repository packages that
 have been removed from the official repositories and have not been added
-(yet) to the AUR in the case of C<stranded> packages, or that have been
+(yet) to the AUR in the case of C<foreign> packages, or that have been
 added to the AUR in the case of C<divorced> packages.
 
 It can also help to identify custom sync repository packages that
 correspond to a package that has been removed from the AUR in the case
-of C<foreign> packages.
+of C<stranded> packages.
 
 It used to be that Arch Linux maintainers always moved packages that
-were removed from official repositories to the AUR and C<stranded>
+were removed from official repositories to the AUR and C<foreign>
 packages very seldom occurred.  This practice seems to have recently
-been dropped and C<stranded> packages often occur.
+been dropped and C<foreign> packages often occur.
 
 These checks are only performed by default when the AUR is activated.
 
-The action needed for a C<stranded> package is to add the package to
+The action needed for a C<foreign> package is to add the package to
 the AUR, compile the package and add it to the custom repository.
 
 The action needed for a C<divorced> package is to compile download the
 package from the AUR, compile the package and add it to the custom
 repository.
 
-The action needed fro a C<foreign> package is to place the source for
+The action needed for a C<stranded> package is to place the source for
 the AUR package under VCS control somewhere else than the AUR.
 B<pacana> cannot detect that this action has been performed and will
-always mark such packages as C<foreign>.
+always mark such packages as C<stranded>.
 
 =item C<aurcheck>
 
