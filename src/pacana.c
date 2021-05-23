@@ -212,6 +212,7 @@ struct dbhash {
 	char *name;
 	alpm_list_t *pkgs;
 	GHashTable *hash;
+	gboolean custom;
 };
 
 /** @} */
@@ -286,6 +287,128 @@ destroy_dbhash(gpointer data)
 	dbhash->hash = NULL;
 	free(dbhash);
 }
+
+typedef struct aur_pkg {
+	char *base;			/* like alpm_pkg_get_base */
+	char *name;			/* like alpm_pkg_get_name */
+	char *version;			/* like alpm_pkg_get_version */
+	char *desc;			/* like alpm_pkg_get_desc */
+	char *url;			/* like alpm_pkg_get_url */
+	alpm_list_t *licenses;		/* like alpm_pkg_get_licenses */
+	alpm_list_t *groups;		/* like alpm_pkg_get_groups */
+	alpm_list_t *depends;		/* like alpm_pkg_get_depends */
+	alpm_list_t *optdepends;	/* like alpm_pkg_get_optdepends */
+	alpm_list_t *checkdepends;	/* like alpm_pkg_get_checkdepends */
+	alpm_list_t *makedepends;	/* like alpm_pkg_get_makedepends */
+	alpm_list_t *conflicts;		/* like alpm_pkg_get_conflicts */
+	alpm_list_t *provides;		/* like alpm_pkg_get_provides */
+	alpm_list_t *replaces;		/* like alpm_pkg_get_replaces */
+#if 0
+	int id;
+	int baseid;
+	int numvotes;
+	double popularity;
+	char *maintainer;
+	time_t first_submitted;
+	time_t last_modified;
+	char *urlpath;
+	alpm_list_t *keywords;
+#endif
+} aur_pkg_t;
+
+const char *
+aur_pkg_get_base(aur_pkg_t *pkg)
+{
+	return (pkg->base);
+}
+
+const char *
+aur_pkg_get_name(aur_pkg_t *pkg)
+{
+	return (pkg->name);
+}
+
+const char *
+aur_pkg_get_version(aur_pkg_t *pkg)
+{
+	return (pkg->version);
+}
+
+const char *
+aur_pkg_get_desc(aur_pkg_t *pkg)
+{
+	return (pkg->desc);
+}
+
+const char *
+aur_pkg_get_url(aur_pkg_t *pkg)
+{
+	return (pkg->url);
+}
+
+alpm_list_t *
+aur_pkg_get_licenses(aur_pkg_t *pkg)
+{
+	return (pkg->licenses);
+}
+
+
+alpm_list_t *
+aur_pkg_get_groups(aur_pkg_t *pkg)
+{
+	return (pkg->groups);
+}
+
+
+alpm_list_t *
+aur_pkg_get_depends(aur_pkg_t *pkg)
+{
+	return (pkg->depends);
+}
+
+
+alpm_list_t *
+aur_pkg_get_optdepends(aur_pkg_t *pkg)
+{
+	return (pkg->optdepends);
+}
+
+
+alpm_list_t *
+aur_pkg_get_checkdepends(aur_pkg_t *pkg)
+{
+	return (pkg->checkdepends);
+}
+
+
+alpm_list_t *
+aur_pkg_get_makedepends(aur_pkg_t *pkg)
+{
+	return (pkg->makedepends);
+}
+
+
+alpm_list_t *
+aur_pkg_get_conflicts(aur_pkg_t *pkg)
+{
+	return (pkg->conflicts);
+}
+
+
+alpm_list_t *
+aur_pkg_get_provides(aur_pkg_t *pkg)
+{
+	return (pkg->provides);
+}
+
+
+alpm_list_t *
+aur_pkg_get_replaces(aur_pkg_t *pkg)
+{
+	return (pkg->replaces);
+}
+
+struct dbhash *aur_db = NULL;
 
 void
 check_shadow(GSList *s, alpm_pkg_t *pkg)
@@ -494,132 +617,74 @@ check_vcscheck(GSList *s, alpm_pkg_t *pkg)
 }
 
 void
+check_stranded_local(GSList *s, alpm_pkg_t *pkg)
+{
+	struct dbhash *dbhash = s->data;
+	const char *sync = dbhash->name;
+	const char *name = alpm_pkg_get_name(pkg);
+	const char *vers = alpm_pkg_get_version(pkg);
+	int found = 0;
+
+	/* skip local database */
+	for (s = s->next; s; s = s->next) {
+		dbhash = s->data;
+		if (g_hash_table_lookup(dbhash->hash, name)) {
+			found = 1;
+			break;
+		}
+	}
+	if (!found) {
+		/* Package from local database not found in any other sync database.
+		   This package, by definition is foreign.  Without checking the AUR,
+		   this package will be marked foreign.  When we can check the AUR and it 
+		   exists in the AUR, this package is marked stranded.  When it does not
+		   exist in the AUR, it is marked as foreign. */
+		/* If the package exists in the AUR and the AUR package version
+		   is newer than that of the package, mark it as out of date. */
+		aur_pkg_t *pkg2;
+
+		if (options.url) {
+			struct dbhash *dbhash2 = aur_db;
+
+			if ((pkg2 = g_hash_table_lookup(dbhash2->hash, name))) {
+				const char *sync2 = dbhash2->name;
+				const char *name2 = aur_pkg_get_name(pkg2);
+				const char *vers2 = aur_pkg_get_version(pkg2);
+
+				WPRINTF("%s/%s %s stranded\n", sync, name, vers);
+
+				switch (alpm_pkg_vercmp(vers, vers2)) {
+				case -1:
+					WPRINTF("%s/%s %s out of date\n", sync, name, vers);
+					break;
+				case 0:
+					break;
+				case 1:
+					WPRINTF("%s/%s %s out of date\n", sync2, name2, vers2);
+					break;
+				}
+			} else {
+				WPRINTF("%s/%s %s foreign\n", sync, name, vers);
+			}
+		} else {
+			WPRINTF("%s/%s %s foreign\n", sync, name, vers);
+		}
+	}
+}
+
+void
+check_stranded_custom(GSList *s, alpm_pkg_t *pkg)
+{
+	(void) s;
+	(void) pkg;
+	/* FIXME: write this */
+}
+
+void
 freeit(gpointer data)
 {
 	free(data);
 }
-
-typedef struct aur_pkg {
-	char *base;			/* like alpm_pkg_get_base */
-	char *name;			/* like alpm_pkg_get_name */
-	char *version;			/* like alpm_pkg_get_version */
-	char *desc;			/* like alpm_pkg_get_desc */
-	char *url;			/* like alpm_pkg_get_url */
-	alpm_list_t *licenses;		/* like alpm_pkg_get_licenses */
-	alpm_list_t *groups;		/* like alpm_pkg_get_groups */
-	alpm_list_t *depends;		/* like alpm_pkg_get_depends */
-	alpm_list_t *optdepends;	/* like alpm_pkg_get_optdepends */
-	alpm_list_t *checkdepends;	/* like alpm_pkg_get_checkdepends */
-	alpm_list_t *makedepends;	/* like alpm_pkg_get_makedepends */
-	alpm_list_t *conflicts;		/* like alpm_pkg_get_conflicts */
-	alpm_list_t *provides;		/* like alpm_pkg_get_provides */
-	alpm_list_t *replaces;		/* like alpm_pkg_get_replaces */
-#if 0
-	int id;
-	int baseid;
-	int numvotes;
-	double popularity;
-	char *maintainer;
-	time_t first_submitted;
-	time_t last_modified;
-	char *urlpath;
-	alpm_list_t *keywords;
-#endif
-} aur_pkg_t;
-
-const char *
-aur_pkg_get_base(aur_pkg_t *pkg)
-{
-	return (pkg->base);
-}
-
-const char *
-aur_pkg_get_name(aur_pkg_t *pkg)
-{
-	return (pkg->name);
-}
-
-const char *
-aur_pkg_get_version(aur_pkg_t *pkg)
-{
-	return (pkg->version);
-}
-
-const char *
-aur_pkg_get_desc(aur_pkg_t *pkg)
-{
-	return (pkg->desc);
-}
-
-const char *
-aur_pkg_get_url(aur_pkg_t *pkg)
-{
-	return (pkg->url);
-}
-
-alpm_list_t *
-aur_pkg_get_licenses(aur_pkg_t *pkg)
-{
-	return (pkg->licenses);
-}
-
-
-alpm_list_t *
-aur_pkg_get_groups(aur_pkg_t *pkg)
-{
-	return (pkg->groups);
-}
-
-
-alpm_list_t *
-aur_pkg_get_depends(aur_pkg_t *pkg)
-{
-	return (pkg->depends);
-}
-
-
-alpm_list_t *
-aur_pkg_get_optdepends(aur_pkg_t *pkg)
-{
-	return (pkg->optdepends);
-}
-
-
-alpm_list_t *
-aur_pkg_get_checkdepends(aur_pkg_t *pkg)
-{
-	return (pkg->checkdepends);
-}
-
-
-alpm_list_t *
-aur_pkg_get_makedepends(aur_pkg_t *pkg)
-{
-	return (pkg->makedepends);
-}
-
-
-alpm_list_t *
-aur_pkg_get_conflicts(aur_pkg_t *pkg)
-{
-	return (pkg->conflicts);
-}
-
-
-alpm_list_t *
-aur_pkg_get_provides(aur_pkg_t *pkg)
-{
-	return (pkg->provides);
-}
-
-
-alpm_list_t *
-aur_pkg_get_replaces(aur_pkg_t *pkg)
-{
-	return (pkg->replaces);
-}
-
-struct dbhash *aur_db = NULL;
 
 int
 parse_data(const char *data)
@@ -981,6 +1046,7 @@ pac_analyze(void)
 	 */
 	if (options.url) {
 		GSList *alist = NULL;
+
 		dbhash = slist->data;
 		alpm_list_t *p;
 
@@ -1013,19 +1079,25 @@ pac_analyze(void)
 			if (options.custom) {
 				switch (in_list(options.custom, sync)) {
 				case -1:	/* in list with ! prefixed */
+					dbhash->custom = FALSE;
 					continue;
 				case 0:	/* not in list */
+					dbhash->custom = FALSE;
 					continue;
 				case 1:	/* in list without ! prefixed */
+					dbhash->custom = TRUE;
 					break;
 				}
 			} else {
 				switch (in_list(ARCH_STANDARD_REPOS, sync)) {
 				case -1:	/* in list with ! prefixed */
+					dbhash->custom = TRUE;
 					break;
 				case 0:	/* not in list */
+					dbhash->custom = TRUE;
 					break;
 				case 1:	/* in list without ! prefixed */
+					dbhash->custom = FALSE;
 					continue;
 				}
 			}
@@ -1107,7 +1179,34 @@ pac_analyze(void)
 	}
 	if (options.analyses & PACANA_ANALYSIS_STRANDED) {
 		OPRINTF(1, "Performing STRANDED analysis:\n");
-		WPRINTF("TODO!\n");
+		/* local database */
+		if ((s = slist)) {
+			dbhash = s->data;
+
+			alpm_list_t *p;
+
+			for (p = dbhash->pkgs; p; p = alpm_list_next(p)) {
+				alpm_pkg_t *pkg = p->data;
+
+				check_stranded_local(s, pkg);
+			}
+		}
+		if (options.url) {
+			/* skip local database */
+			for (s = slist->next; s; s = s->next) {
+				dbhash = s->data;
+
+				if (!dbhash->custom)
+					continue;
+				alpm_list_t *p;
+
+				for (p = dbhash->pkgs; p; p = alpm_list_next(p)) {
+					alpm_pkg_t *pkg = p->data;
+
+					check_stranded_custom(s, pkg);
+				}
+			}
+		}
 		OPRINTF(1, "Done\n\n");
 	}
 	if (options.analyses & PACANA_ANALYSIS_AURCHECK) {
