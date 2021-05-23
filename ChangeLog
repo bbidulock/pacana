@@ -1,5 +1,124 @@
 # created with git log --stat=76 -M -C -500|fmt -sct -w80
 
+commit bfe75a8ce47d8deba433bacd31b314fb807efe04
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sun May 23 01:14:57 2021 -0600
+
+    update release notes
+
+ RELEASE.md | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+commit 2095cb09f0acbbd435fbd97c00eaf6c1d5d13522
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sun May 23 01:13:01 2021 -0600
+
+    make aur checks
+
+ src/pacana.c | 123 ++++++++++++++++++++++++++++++++++---------------------
+ 1 file changed, 77 insertions(+), 46 deletions(-)
+
+commit 468772cba04dfe00d7d6f4670e83f4dde389b875
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sat May 22 23:11:09 2021 -0600
+
+    start stranded analysis
+
+ src/pacana.c | 331 ++++++++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 215 insertions(+), 116 deletions(-)
+
+commit 16c9ab60f76c560177cf4ffa3717da7680fc8f8d
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sat May 22 23:10:42 2021 -0600
+
+    correct manual
+
+ man/pacana.pod | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+
+commit 91dd67732ac842b1cea9742936d0f92d9a53ae88
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sat May 22 10:44:59 2021 -0600
+
+    don't rely on database handle
+
+ src/pacana.c | 21 ++++++++++-----------
+ 1 file changed, 10 insertions(+), 11 deletions(-)
+
+commit 4e0826d6e3eedf7c793ff0c30379b4dbd16d0483
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sat May 22 10:24:54 2021 -0600
+
+    manual page corrections
+
+ man/pacana.pod | 73 ++++++++++++++++++++++++++++++++----------------------
+ 1 file changed, 43 insertions(+), 30 deletions(-)
+
+commit 3503aa6988025c278c765230c144aeea6b7e21d3
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sat May 22 10:24:23 2021 -0600
+
+    get pacana reading the AUR
+
+ src/pacana.c | 614 ++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 589 insertions(+), 25 deletions(-)
+
+commit 2169707ebec8a5dcfd7f16cf9ce3aca474765a03
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sat May 22 04:15:06 2021 -0600
+
+    add new checks
+
+ src/pacana.c | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+commit 915168ddf8fc9e2965d7e44ddad18b900cba5b19
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sat May 22 04:11:44 2021 -0600
+
+    update copyright, add curl json-c
+
+ src/pacana.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+commit 72e4cfc48afc2a0e895758a5623c780cd6308e02
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sat May 22 04:08:16 2021 -0600
+
+    add flags for curl and json-c
+
+ src/Makefile.am | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit e0bce46a26245ef9db74162281958fdfa5084bec
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sat May 22 04:04:48 2021 -0600
+
+    autoscan update, add curl json-c
+
+ configure.ac | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+commit 4ef0682957615fd4b71d60d07f3734330fce26de
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sat May 22 03:55:49 2021 -0600
+
+    update manual page with new functions
+
+ man/Makefile.am |   2 +-
+ man/pacana.pod  | 139 ++++++++++++++++++++++++++++++++++++++++++++++------
+ 2 files changed, 126 insertions(+), 15 deletions(-)
+
+commit 7c89e6bcb9bd86fcfe5584056b1249f9964fd6bb
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Tue May 18 01:05:06 2021 -0600
+
+    post-release update
+
+ ChangeLog | 13 +++++++++++++
+ NEWS      |  3 ++-
+ 2 files changed, 15 insertions(+), 1 deletion(-)
+
 commit 71d68f1bfa10d1a3ed016559e8ff2994ae1ad518
 Author: Brian Bidulock <bidulock@openss7.org>
 Date:   Tue May 18 00:56:02 2021 -0600
