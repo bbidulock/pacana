@@ -1,6 +1,6 @@
-[pacana -- release notes.  2021-05-18]: #
+[pacana -- release notes.  2021-05-22]: #
 
-pacana 0.11 -- Preliminary release
+pacana 0.12 -- Preliminary release
 ==================================
 
 This is an preliminary release of the pacana package that provides a
@@ -9,7 +9,8 @@ repositories and AUR packages that may shadow or need to track existing
 official repository packages.
 
 This release is an preliminary release and includes alpha (but useful)
-versions of the tools.
+versions of the tools.  The tool has been updated with this release to
+also query the AUR.
 
 Included in the release is an autoconf tarball for building the package
 from source.  See the [NEWS](NEWS) and [TODO](TODO) file in the release
