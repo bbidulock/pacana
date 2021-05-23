@@ -617,16 +617,17 @@ check_vcscheck(GSList *s, alpm_pkg_t *pkg)
 }
 
 void
-check_stranded_local(GSList *s, alpm_pkg_t *pkg)
+check_stranded_local(GSList *slist, alpm_pkg_t *pkg)
 {
-	struct dbhash *dbhash = s->data;
+	struct dbhash *dbhash = slist->data;
 	const char *sync = dbhash->name;
 	const char *name = alpm_pkg_get_name(pkg);
 	const char *vers = alpm_pkg_get_version(pkg);
 	int found = 0;
+	GSList *s;
 
 	/* skip local database */
-	for (s = s->next; s; s = s->next) {
+	for (s = slist->next; s; s = s->next) {
 		dbhash = s->data;
 		if (g_hash_table_lookup(dbhash->hash, name)) {
 			found = 1;
@@ -634,37 +635,34 @@ check_stranded_local(GSList *s, alpm_pkg_t *pkg)
 		}
 	}
 	if (!found) {
-		/* Package from local database not found in any other sync database.
-		   This package, by definition is foreign.  Without checking the AUR,
-		   this package will be marked foreign.  When we can check the AUR and it 
+		/* Package from local database not found in any other sync database. This 
+		   package, by definition is foreign.  Without checking the AUR, this
+		   package will be marked foreign.  When we can check the AUR and it
 		   exists in the AUR, this package is marked stranded.  When it does not
 		   exist in the AUR, it is marked as foreign. */
-		/* If the package exists in the AUR and the AUR package version
-		   is newer than that of the package, mark it as out of date. */
+		/* If the package exists in the AUR and the AUR package version is newer
+		   than that of the package, mark it as out of date. */
+
 		aur_pkg_t *pkg2;
+		struct dbhash *dbhash2 = aur_db;
 
-		if (options.url) {
-			struct dbhash *dbhash2 = aur_db;
+		if ((pkg2 = g_hash_table_lookup(dbhash2->hash, name))) {
+			const char *sync2 = dbhash2->name;
+			const char *name2 = aur_pkg_get_name(pkg2);
+			const char *vers2 = aur_pkg_get_version(pkg2);
 
-			if ((pkg2 = g_hash_table_lookup(dbhash2->hash, name))) {
-				const char *sync2 = dbhash2->name;
-				const char *name2 = aur_pkg_get_name(pkg2);
-				const char *vers2 = aur_pkg_get_version(pkg2);
+			WPRINTF("%s/%s %s divorced to %s/%s %s\n", sync, name, vers, sync2, name2, vers2);
 
-				WPRINTF("%s/%s %s stranded\n", sync, name, vers);
-
-				switch (alpm_pkg_vercmp(vers, vers2)) {
-				case -1:
-					WPRINTF("%s/%s %s out of date\n", sync, name, vers);
-					break;
-				case 0:
-					break;
-				case 1:
+			switch (alpm_pkg_vercmp(vers, vers2)) {
+			case -1:
+				WPRINTF("%s/%s %s out of date\n", sync, name, vers);
+				break;
+			case 0:
+				break;
+			case 1:
+				if (!vcs_package(pkg))
 					WPRINTF("%s/%s %s out of date\n", sync2, name2, vers2);
-					break;
-				}
-			} else {
-				WPRINTF("%s/%s %s foreign\n", sync, name, vers);
+				break;
 			}
 		} else {
 			WPRINTF("%s/%s %s foreign\n", sync, name, vers);
@@ -675,9 +673,38 @@ check_stranded_local(GSList *s, alpm_pkg_t *pkg)
 void
 check_stranded_custom(GSList *s, alpm_pkg_t *pkg)
 {
-	(void) s;
-	(void) pkg;
-	/* FIXME: write this */
+	if (!options.url)
+		return;
+
+	struct dbhash *dbhash = s->data;
+	const char *sync = dbhash->name;
+	const char *name = alpm_pkg_get_name(pkg);
+	const char *vers = alpm_pkg_get_version(pkg);
+
+	aur_pkg_t *pkg2;
+	struct dbhash *dbhash2 = aur_db;
+
+	if ((pkg2 = g_hash_table_lookup(dbhash2->hash, name))) {
+		const char *sync2 = dbhash2->name;
+		const char *name2 = aur_pkg_get_name(pkg2);
+		const char *vers2 = aur_pkg_get_version(pkg2);
+
+		WPRINTF("%s/%s %s built from %s/%s %s\n", sync, name, vers, sync2, name2, vers2);
+
+		switch (alpm_pkg_vercmp(vers, vers2)) {
+		case -1:
+			WPRINTF("%s/%s %s out of date\n", sync, name, vers);
+			break;
+		case 0:
+			break;
+		case 1:
+			if (!vcs_package(pkg))
+				WPRINTF("%s/%s %s out of date\n", sync2, name2, vers2);
+			break;
+		}
+	} else {
+		WPRINTF("%s/%s %s stranded\n", sync, name, vers);
+	}
 }
 
 void
@@ -725,12 +752,13 @@ parse_data(const char *data)
 	if (!(length = json_object_array_length(results))) {
 		goto done;
 	}
-	dbhash = calloc(1, sizeof(*aur_db));
-	dbhash->name = strdup("aur");
-	dbhash->pkgs = NULL;
-	dbhash->hash = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);
-	aur_db = dbhash;
-
+	if (!(dbhash = aur_db)) {
+		dbhash = calloc(1, sizeof(*aur_db));
+		dbhash->name = strdup("aur");
+		dbhash->pkgs = NULL;
+		dbhash->hash = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);
+		aur_db = dbhash;
+	}
 	for (i = 0; i < length; i++) {
 		aur_pkg_t *aur_pkg;
 		const char *str;
@@ -747,7 +775,10 @@ parse_data(const char *data)
 		aur_pkg = calloc(1, sizeof(*aur_pkg));
 		alpm_list_append(&dbhash->pkgs, aur_pkg);
 		aur_pkg->name = strdup(str);
-		g_hash_table_insert(dbhash->hash, strdup(str), aur_pkg);
+		g_hash_table_insert(dbhash->hash, strdup(aur_pkg->name), aur_pkg);
+		DPRINTF(1, "AUR package: %s/%s\n", dbhash->name, aur_pkg->name);
+		if (!g_hash_table_lookup(dbhash->hash, aur_pkg->name))
+			EPRINTF("Can't look up %s/%s\n", dbhash->name, aur_pkg->name);
 		if ((obj = json_object_object_get(pkg, "PackageBase")) && (str = json_object_get_string(obj)))
 			aur_pkg->base = strdup(str);
 		if ((obj = json_object_object_get(pkg, "Version")) && (str = json_object_get_string(obj)))
@@ -1179,19 +1210,19 @@ pac_analyze(void)
 	}
 	if (options.analyses & PACANA_ANALYSIS_STRANDED) {
 		OPRINTF(1, "Performing STRANDED analysis:\n");
-		/* local database */
-		if ((s = slist)) {
-			dbhash = s->data;
-
-			alpm_list_t *p;
-
-			for (p = dbhash->pkgs; p; p = alpm_list_next(p)) {
-				alpm_pkg_t *pkg = p->data;
-
-				check_stranded_local(s, pkg);
-			}
-		}
 		if (options.url) {
+			/* local database */
+			if ((s = slist)) {
+				dbhash = s->data;
+
+				alpm_list_t *p;
+
+				for (p = dbhash->pkgs; p; p = alpm_list_next(p)) {
+					alpm_pkg_t *pkg = p->data;
+
+					check_stranded_local(s, pkg);
+				}
+			}
 			/* skip local database */
 			for (s = slist->next; s; s = s->next) {
 				dbhash = s->data;
