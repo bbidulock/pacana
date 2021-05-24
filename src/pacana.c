@@ -656,6 +656,7 @@ check_stranded_local(GSList *slist, alpm_pkg_t *pkg)
 			switch (alpm_pkg_vercmp(vers, vers2)) {
 			case -1:
 				WPRINTF("%s/%s %s out of date\n", sync, name, vers);
+				OPRINTF(3, "%s/%s %s => rebuild from %s/%s %s\n", sync, name, vers, sync2, name2, vers2);
 				break;
 			case 0:
 				break;
@@ -689,15 +690,17 @@ check_stranded_custom(GSList *s, alpm_pkg_t *pkg)
 		const char *name2 = aur_pkg_get_base(pkg2);
 		const char *vers2 = aur_pkg_get_version(pkg2);
 
-		WPRINTF("%s/%s %s built from %s/%s %s\n", sync, name, vers, sync2, name2, vers2);
-
 		switch (alpm_pkg_vercmp(vers, vers2)) {
 		case -1:
+			WPRINTF("%s/%s %s built from %s/%s %s\n", sync, name, vers, sync2, name2, vers2);
 			WPRINTF("%s/%s %s out of date\n", sync, name, vers);
+			OPRINTF(3, "%s/%s %s => rebuild from %s/%s %s\n", sync, name, vers, sync2, name2, vers2);
 			break;
 		case 0:
+			OPRINTF(2, "%s/%s %s built from %s/%s %s\n", sync, name, vers, sync2, name2, vers2);
 			break;
 		case 1:
+			WPRINTF("%s/%s %s built from %s/%s %s\n", sync, name, vers, sync2, name2, vers2);
 			if (!vcs_package(pkg))
 				WPRINTF("%s/%s %s out of date\n", sync2, name2, vers2);
 			break;
