@@ -174,13 +174,15 @@ typedef enum {
 #define PACANA_ANALYSIS_VCSCHECK    (1<<4)
 #define PACANA_ANALYSIS_STRANDED    (1<<5)
 #define PACANA_ANALYSIS_AURCHECK    (1<<6)
+#define PACANA_ANALYSIS_MISSING     (1<<7)
 #define PACANA_ANALYSIS_ALL	    (PACANA_ANALYSIS_SHADOW\
 				    |PACANA_ANALYSIS_PROVIDES\
 				    |PACANA_ANALYSIS_ALTERNATE\
 				    |PACANA_ANALYSIS_OUTDATED\
 				    |PACANA_ANALYSIS_VCSCHECK\
 				    |PACANA_ANALYSIS_STRANDED\
-				    |PACANA_ANALYSIS_AURCHECK)
+				    |PACANA_ANALYSIS_AURCHECK\
+				    |PACANA_ANALYSIS_MISSING)
 #define AUR_DEFAULT_URL		    "https://aur.archlinux.org/rpc/"
 #define ARCH_STANDARD_REPOS	    "core,extra,community,multilib,ec2,testing,community-testing,multilib-testing"
 #define AUR_MAXLEN		    4443
@@ -410,6 +412,7 @@ aur_pkg_get_replaces(aur_pkg_t *pkg)
 }
 
 struct dbhash *aur_db = NULL;
+GHashTable *provided = NULL;
 
 void
 check_shadow(GSList *s, alpm_pkg_t *pkg)
@@ -718,6 +721,50 @@ check_stranded_custom(GSList *s, alpm_pkg_t *pkg)
 	} else {
 		WPRINTF("%s/%s %s stranded\n", sync, name, vers);
 	}
+}
+
+void
+check_missing(GSList *s, alpm_pkg_t *pkg)
+{
+	struct dbhash *dbhash = s->data;
+	const char *sync = dbhash->name;
+	const char *name = alpm_pkg_get_name(pkg);
+	const char *vers = alpm_pkg_get_version(pkg);
+
+	alpm_list_t *d;
+
+	for (d = alpm_pkg_get_depends(pkg); d; d = alpm_list_next(d)) {
+		alpm_depend_t *dep = d->data;
+
+		const char *dname = dep->name;
+
+		if (!g_hash_table_contains(provided, dname)) {
+			if (options.url) {
+				aur_pkg_t *pkg2;
+				struct dbhash *dbhash2 = aur_db;
+
+				if ((pkg2 = g_hash_table_lookup(dbhash2->hash, dname))) {
+					const char *sync2 = dbhash2->name;
+					const char *name2 = aur_pkg_get_base(pkg2);
+					const char *vers2 = aur_pkg_get_version(pkg2);
+
+					WPRINTF("%s/%s %s dependency %s needs: %s/%s %s\n", sync, name, vers, dname, sync2, name2, vers2);
+					OPRINTF(3, "%s/%s %s => build %s from %s/%s %s\n", sync, name, vers, dname, sync2, name2, vers2);
+					if (!pkg2->maintainer) {
+						WPRINTF("%s/%s %s is an orphan\n", sync2, name2, vers2);
+						OPRINTF(3, "%s/%s %s => adopt package\n", sync2, name2, vers2);
+					}
+				} else {
+					WPRINTF("%s/%s %s dependency missing: %s\n", sync, name, vers, dname);
+					OPRINTF(3, "%s/%s %s => create package for %s\n", sync, name, vers, dname);
+				}
+			} else {
+				WPRINTF("%s/%s %s dependency missing: %s\n", sync, name, vers, dname);
+				OPRINTF(3, "%s/%s %s => find package for %s\n", sync, name, vers, dname);
+			}
+		}
+	}
+
 }
 
 void
@@ -1033,9 +1080,11 @@ pac_analyze(void)
 		alpm_register_syncdb(handle, name, ALPM_SIG_DATABASE_OPTIONAL);
 		DPRINTF(1, "ALPM database: %s\n", name);
 	}
+	provided = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);
 	GSList *slist = NULL;
 	struct dbhash *dbhash;
 	alpm_db_t *db;
+
 
 	dbhash = calloc(1, sizeof(*dbhash));
 	db = alpm_get_localdb(handle);
@@ -1051,11 +1100,18 @@ pac_analyze(void)
 
 		for (p = dbhash->pkgs; p; p = alpm_list_next(p)) {
 			alpm_pkg_t *pkg = p->data;
-			char *name = strdup(alpm_pkg_get_name(pkg));
+			const char *name = alpm_pkg_get_name(pkg);
 
 			DPRINTF(1, "ALPM package: %s/%s\n", dbhash->name, name);
-			g_hash_table_insert(dbhash->hash, name, pkg);
+			g_hash_table_insert(dbhash->hash, strdup(name), pkg);
 			count++;
+
+			g_hash_table_add(provided, strdup(name));
+			alpm_list_t *d;
+			for (d = alpm_pkg_get_provides(pkg); d; d = alpm_list_next(d)) {
+				alpm_depend_t *dep = d->data;
+				g_hash_table_add(provided, strdup(dep->name));
+			}
 		}
 		DPRINTF(1, "ALPM database: %s (%zd packages)\n", dbhash->name, count);
 	}
@@ -1075,11 +1131,18 @@ pac_analyze(void)
 
 			for (p = dbhash->pkgs; p; p = alpm_list_next(p)) {
 				alpm_pkg_t *pkg = p->data;
-				char *name = strdup(alpm_pkg_get_name(pkg));
+				const char *name = alpm_pkg_get_name(pkg);
 
 				DPRINTF(1, "ALPM package: %s/%s\n", dbhash->name, name);
-				g_hash_table_insert(dbhash->hash, name, pkg);
+				g_hash_table_insert(dbhash->hash, strdup(name), pkg);
 				count++;
+
+				g_hash_table_add(provided, strdup(name));
+				alpm_list_t *d;
+				for (d = alpm_pkg_get_provides(pkg); d; d = alpm_list_next(d)) {
+					alpm_depend_t *dep = d->data;
+					g_hash_table_add(provided, strdup(dep->name));
+				}
 			}
 			DPRINTF(1, "ALPM database: %s (%zd packages)\n", dbhash->name, count);
 		}
@@ -1161,6 +1224,28 @@ pac_analyze(void)
 
 				DPRINTF(1, "Adding to AUR list: %s\n", name);
 				alist = g_slist_append(alist, strdup(name));
+			}
+		}
+		if (options.analyses & PACANA_ANALYSIS_MISSING) {
+			/* Find all the missing dependencies (those in no sync
+			   database) and add them to the AUR list. */
+			for (s = slist; s; s = s->next) {
+				dbhash = s->data;
+				alpm_list_t *p;
+				for (p = dbhash->pkgs; p; p = alpm_list_next(p)) {
+					alpm_pkg_t *pkg = p->data;
+
+					alpm_list_t *d;
+					for (d = alpm_pkg_get_depends(pkg); d; d = alpm_list_next(d)) {
+						alpm_depend_t *dep = d->data;
+						const char *name = dep->name;
+
+						if (!g_hash_table_contains(provided, name)) {
+							DPRINTF(1, "Adding to AUR list: %s\n", name);
+							alist = g_slist_append(alist, strdup(name));
+						}
+					}
+				}
 			}
 		}
 		if (aur_lookup(alist)) {
@@ -1261,6 +1346,19 @@ pac_analyze(void)
 	if (options.analyses & PACANA_ANALYSIS_AURCHECK) {
 		OPRINTF(1, "Performing AURCHECK analysis:\n");
 		WPRINTF("TODO!\n");
+		OPRINTF(1, "Done\n\n");
+	}
+	if (options.analyses & PACANA_ANALYSIS_MISSING) {
+		OPRINTF(1, "Performing MISSING analysis:\n");
+		for (s = slist; s; s = s->next) {
+			dbhash = s->data;
+			alpm_list_t *p;
+			for (p = dbhash->pkgs; p; p = alpm_list_next(p)) {
+				alpm_pkg_t *pkg = p->data;
+
+				check_missing(s, pkg);
+			}
+		}
 		OPRINTF(1, "Done\n\n");
 	}
 	/* DO MORE! */

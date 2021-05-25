@@ -154,6 +154,13 @@ in the AUR and whether they are up to date with the AUR.
 Note that these checks are only performed when access to the AUR has be
 activated.
 
+=item C<missing>
+
+Checks whether packages in a local or sync database depend on a package
+not provided by any sync database.  When access to the AUR has been
+activated as well, checks whether the AUR provides the missing
+dependency.
+
 =back
 
 =item B<-r>, B<--repos> I<REPO>[B<,>[B<!>]I<REPO>]...
