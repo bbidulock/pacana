@@ -303,6 +303,7 @@ typedef struct aur_pkg {
 	alpm_list_t *conflicts;		/* like alpm_pkg_get_conflicts */
 	alpm_list_t *provides;		/* like alpm_pkg_get_provides */
 	alpm_list_t *replaces;		/* like alpm_pkg_get_replaces */
+	char *maintainer;
 #if 0
 	int id;
 	int baseid;
@@ -665,6 +666,10 @@ check_stranded_local(GSList *slist, alpm_pkg_t *pkg)
 					WPRINTF("%s/%s %s out of date\n", sync2, name2, vers2);
 				break;
 			}
+			if (!pkg2->maintainer) {
+				WPRINTF("%s/%s %s is an orphan\n", sync2, name2, vers2);
+				OPRINTF(3, "%s/%s %s => adopt package\n", sync2, name2, vers2);
+			}
 		} else {
 			WPRINTF("%s/%s %s foreign\n", sync, name, vers);
 		}
@@ -704,6 +709,11 @@ check_stranded_custom(GSList *s, alpm_pkg_t *pkg)
 			if (!vcs_package(pkg))
 				WPRINTF("%s/%s %s out of date\n", sync2, name2, vers2);
 			break;
+		}
+
+		if (!pkg2->maintainer) {
+			WPRINTF("%s/%s %s is an orphan\n", sync2, name2, vers2);
+			OPRINTF(3, "%s/%s %s => adopt package\n", sync2, name2, vers2);
 		}
 	} else {
 		WPRINTF("%s/%s %s stranded\n", sync, name, vers);
@@ -885,6 +895,11 @@ parse_data(const char *data)
 				    && json_object_is_type(obj, json_type_string))
 					alpm_list_append(&aur_pkg->replaces,
 							 alpm_dep_from_string(json_object_get_string(obj)));
+		}
+		if ((obj = json_object_object_get(pkg, "Maintainer"))
+				&& json_object_is_type(obj, json_type_string)
+				&& (str = json_object_get_string(obj))) {
+			aur_pkg->maintainer = strdup(str);
 		}
 	}
       done:
