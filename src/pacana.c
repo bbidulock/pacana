@@ -1179,7 +1179,7 @@ pac_analyze(void)
 			}
 			if (!found) {
 				DPRINTF(1, "Adding to AUR list: %s\n", name);
-				alist = g_slist_append(alist, strdup(name));
+				alist = g_slist_append(alist, g_uri_escape_string(name, NULL, FALSE));
 			}
 		}
 		/* Second, get a list of sync databases that are considered "custom".  */
@@ -1223,7 +1223,7 @@ pac_analyze(void)
 				const char *name = alpm_pkg_get_name(pkg);
 
 				DPRINTF(1, "Adding to AUR list: %s\n", name);
-				alist = g_slist_append(alist, strdup(name));
+				alist = g_slist_append(alist, g_uri_escape_string(name, NULL, FALSE));
 			}
 		}
 		if (options.analyses & PACANA_ANALYSIS_MISSING) {
@@ -1242,7 +1242,7 @@ pac_analyze(void)
 
 						if (!g_hash_table_contains(provided, name)) {
 							DPRINTF(1, "Adding to AUR list: %s\n", name);
-							alist = g_slist_append(alist, strdup(name));
+							alist = g_slist_append(alist, g_uri_escape_string(name, NULL, FALSE));
 						}
 					}
 				}
