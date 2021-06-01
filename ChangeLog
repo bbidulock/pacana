@@ -1,5 +1,61 @@
 # created with git log --stat=76 -M -C -500|fmt -sct -w80
 
+commit 220f10fd261ebb97172a4c25da1097e20ee1c290
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Mon May 31 22:28:27 2021 -0600
+
+    uri escape AUR package name search strings
+
+ src/pacana.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+commit ee97373003d3a143b0ceecc8adaf1fa1af5f3e74
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Tue May 25 04:00:58 2021 -0600
+
+    check for missing dependencies
+
+ man/pacana.pod |   7 ++++
+ src/pacana.c   | 108 ++++++++++++++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 110 insertions(+), 5 deletions(-)
+
+commit 8c80e9b21d7b569868e3d7d143629eb022d4f566
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Mon May 24 22:55:14 2021 -0600
+
+    mark orphans
+
+ src/pacana.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+commit a35d21953bfb6fd54ab690b62d1bd5a3fcfaa5a2
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sun May 23 20:40:00 2021 -0600
+
+    show less
+
+ src/pacana.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+commit 5452f0bb2c8c7de8eba63bc35102cb0433a303cc
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sun May 23 17:51:24 2021 -0600
+
+    report aur base instead of name
+
+ src/pacana.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit 8b34a5925d3defcc81137c28b6f2f018ae0e6375
+Author: Brian Bidulock <bidulock@openss7.org>
+Date:   Sun May 23 01:17:14 2021 -0600
+
+    post-release update
+
+ ChangeLog | 13 +++++++++++++
+ NEWS      |  3 ++-
+ 2 files changed, 15 insertions(+), 1 deletion(-)
+
 commit 248fabed3a497088cfc5d83534b66d429308e6f7
 Author: Brian Bidulock <bidulock@openss7.org>
 Date:   Sun May 23 01:16:23 2021 -0600

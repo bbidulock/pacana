@@ -1,4 +1,35 @@
-pacana -- history of user-visible changes.  2021-05-23
+pacana -- history of user-visible changes.  2021-05-31
+
+Release pacana-0.13 released 2021-05-31
+---------------------------------------
+
+git tag -n100 -l 0.13
+
+0.13            pacana 0.13 - Preliminary release
+
+    This is an preliminary release of the pacana package that provides a
+    number of tools for analyzing and working with custom archlinux
+    repositories and AUR packages that may shadow or need to track existing
+    official repository packages.
+
+    This release is an preliminary release and includes alpha (but useful)
+    versions of the tools. The tool has been updated with several fixes and
+    improvements for this release.
+
+    Included in the release is an autoconf tarball for building the package
+    from source. See the NEWS and TODO file in the release for more
+    information. Please report problems to the issues list on GitHub.
+
+git shortlog -e -n -w80,6,8 0.12...0.13
+
+Brian Bidulock <bidulock@openss7.org> (6):
+      post-release update
+      report aur base instead of name
+      show less
+      mark orphans
+      check for missing dependencies
+      uri escape AUR package name search strings
+
 
 Release pacana-0.12 released 2021-05-23
 ---------------------------------------
